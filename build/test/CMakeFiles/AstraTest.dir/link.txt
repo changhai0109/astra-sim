@@ -1,0 +1,1 @@
+/usr/bin/g++ -g -rdynamic CMakeFiles/AstraTest.dir/TestBasicEventHandlerData.o -o AstraTest  ../lib/libgtest.a ../lib/libgmock.a ../lib/libgtest_main.a ../libAstraSim.a ../lib/libgtest.a 

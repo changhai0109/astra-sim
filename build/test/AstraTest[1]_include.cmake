@@ -1,0 +1,5 @@
+if(EXISTS "/home/cman8/astra/astra-sim/build/test/AstraTest[1]_tests.cmake")
+  include("/home/cman8/astra/astra-sim/build/test/AstraTest[1]_tests.cmake")
+else()
+  add_test(AstraTest_NOT_BUILT AstraTest_NOT_BUILT)
+endif()
