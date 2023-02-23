@@ -12,4 +12,4 @@
 	url = https://github.com/scalesim-project/scale-sim-v2.git
 [submodule "extern/graph_frontend/chakra"]
 	path = extern/graph_frontend/chakra
-	url = git@github.com:chakra-eg/chakra.git
+	url = git@github.com:changhai0109/chakra
