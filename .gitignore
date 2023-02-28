@@ -17,3 +17,6 @@ examples/results/
 # JetBrains
 .idea/
 build/
+
+# vscode
+.vscode

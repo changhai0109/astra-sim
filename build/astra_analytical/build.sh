@@ -7,7 +7,7 @@ BINARY="./AnalyticalAstra"
 
 function setup {
     echo ${SCRIPT_DIR}
-    protoc eg_def.proto\
+    protoc ${SCRIPT_DIR}/../../extern/graph_frontend/chakra/eg_def/eg_def.proto\
         --proto_path ${SCRIPT_DIR}/../../extern/graph_frontend/chakra/eg_def/\
         --cpp_out ${SCRIPT_DIR}/../../extern/graph_frontend/chakra/eg_def/
     mkdir -p "${BUILD_DIR}"
@@ -15,12 +15,18 @@ function setup {
 
 function compile {
     cd "${BUILD_DIR}" || exit
-    cmake ..
+    cmake .. -DCMAKE_VERBOSE_MAKEFILE=ON
     make
+}
+
+function clean {
+    rm -rf "${BUILD_DIR}"
 }
 
 case "$1" in
 -c|--compile)
     setup
     compile;;
+-l|--clean)
+    clean;;
 esac

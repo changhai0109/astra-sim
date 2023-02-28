@@ -28,14 +28,19 @@ Workload::Workload(
     string eg_filename,
     string comm_group_filename) {
   this->sys = sys;
-  if(!file_exists(eg_filename + "." + to_string(sys->id) + ".eg")){
+  string eg_full_filename;  // the eg filename specific to this npu
+  if(file_exists(eg_filename + "." + to_string(sys->id) + "torch.eg"))
+    eg_full_filename = eg_filename + "." + to_string(sys->id) + "torch.eg";
+  else if(file_exists(eg_filename + "." + to_string(sys->id) + ".eg"))
+    eg_full_filename = eg_filename + "." + to_string(sys->id) + ".eg";
+  else {
     report();
     this->is_finished = true;
     this->eg_feeder= nullptr;
     return;
   }
   this->eg_feeder =
-        new EGFeeder(eg_filename + "." + to_string(sys->id) + ".eg");
+        new EGFeeder(eg_full_name);
   // TODO: parametrize the number of available hardware resources
   this->hw_resource = new HardwareResource(1);
   initialize_comm_group(comm_group_filename);

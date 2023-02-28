@@ -4,6 +4,8 @@ cmake_minimum_required(VERSION 3.15)
 # C++ requirement
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+include_directories(/usr/scratch/cman8/miniconda_envs/chakra/include)
+link_directories(/usr/scratch/cman8/miniconda_envs/chakra/lib)
 
 # Compiler requirement
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
