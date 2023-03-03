@@ -136,6 +136,26 @@ class Sys : public Callable {
       std::vector<bool> involved_dimensions,
       CommunicatorGroup *communicator_group,
       int explicit_priority);
+  DataSet* generate_broadcast(
+      uint64_t size,
+      std::vector<bool> involved_dimensions,
+      CommunicatorGroup *communicator_group,
+      int explicit_priority);
+  DataSet* generate_reduce(
+      uint64_t size,
+      std::vector<bool> involved_dimensions,
+      CommunicatorGroup *communicator_group,
+      int explicit_priority);
+  DataSet* generate_scatter(
+      uint64_t size,
+      std::vector<bool> involved_dimensions,
+      CommunicatorGroup *communicator_group,
+      int explicit_priority);
+  DataSet* generate_gather(
+      uint64_t size,
+      std::vector<bool> involved_dimensions,
+      CommunicatorGroup *communicator_group,
+      int explicit_priority);
   DataSet* generate_collective(
       uint64_t size,
       LogicalTopology* topology,
@@ -299,6 +319,10 @@ class Sys : public Callable {
   std::vector<CollectiveImpl*> reduce_scatter_implementation_per_dimension;
   std::vector<CollectiveImpl*> all_gather_implementation_per_dimension;
   std::vector<CollectiveImpl*> all_to_all_implementation_per_dimension;
+  std::vector<CollectiveImpl*> reduce_implementation_per_dimension;
+  std::vector<CollectiveImpl*> gather_implementation_per_dimension;
+  std::vector<CollectiveImpl*> scatter_implementation_per_dimension;
+  std::vector<CollectiveImpl*> broadcast_implementation_per_dimension;
   CollectiveOptimization collectiveOptimization;
   Tick last_scheduled_collective;
   bool break_dimension_done;

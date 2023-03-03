@@ -241,6 +241,14 @@ Sys::Sys(
       id, physical_dims, all_gather_implementation_per_dimension);
   logical_topologies["AllToAll"] = new GeneralComplexTopology(
       id, physical_dims, all_to_all_implementation_per_dimension);
+  logical_topologies["Reduce"] = new GeneralComplexTopology(
+      id, physical_dims, reduce_implementation_per_dimension);
+  logical_topologies["Gather"] = new GeneralComplexTopology(
+      id, physical_dims, gather_implementation_per_dimension);
+  logical_topologies["Scatter"] = new GeneralComplexTopology(
+      id, physical_dims, scatter_implementation_per_dimension);
+  logical_topologies["Broadcast"] = new GeneralComplexTopology(
+      id, physical_dims, broadcast_implementation_per_dimension);
 
   memBus = new MemBus(
       "NPU",
@@ -370,6 +378,34 @@ bool Sys::initialize_sys(string name) {
     for (auto collective_impl_str: collective_impl_str_vec) {
       CollectiveImpl* ci = generate_collective_impl_from_input(collective_impl_str);
       all_to_all_implementation_per_dimension.push_back(ci);
+    }
+  }
+  if (j.contains("broadcast-implementation")) {
+    vector<string> collective_impl_str_vec = j["broadcast-implementation"];
+    for (auto collective_impl_str: collective_impl_str_vec) {
+      CollectiveImpl* ci = generate_collective_impl_from_input(collective_impl_str);
+      broadcast_implementation_per_dimension.push_back(ci);
+    }
+  }
+  if (j.contains("reduce-implementation")) {
+    vector<string> collective_impl_str_vec = j["reduce-implementation"];
+    for (auto collective_impl_str: collective_impl_str_vec) {
+      CollectiveImpl* ci = generate_collective_impl_from_input(collective_impl_str);
+      reduce_implementation_per_dimension.push_back(ci);
+    }
+  }
+  if (j.contains("gather-implementation")) {
+    vector<string> collective_impl_str_vec = j["gather-implementation"];
+    for (auto collective_impl_str: collective_impl_str_vec) {
+      CollectiveImpl* ci = generate_collective_impl_from_input(collective_impl_str);
+      gather_implementation_per_dimension.push_back(ci);
+    }
+  }
+  if (j.contains("scatter-implementation")) {
+    vector<string> collective_impl_str_vec = j["scatter-implementation"];
+    for (auto collective_impl_str: collective_impl_str_vec) {
+      CollectiveImpl* ci = generate_collective_impl_from_input(collective_impl_str);
+      scatter_implementation_per_dimension.push_back(ci);
     }
   }
   if (j.contains("collective-optimization")) {
@@ -611,6 +647,14 @@ LogicalTopology* Sys::get_logical_topology(ComType comm_type){
       return logical_topologies["ReduceScatter"];
   else if(comm_type==ComType::All_Gather)
     return logical_topologies["AllGather"];
+  else if(comm_type==ComType::Broadcast)
+    return logical_topologies["Broadcast"];
+  else if(comm_type==ComType::Scatter)
+    return logical_topologies["Scatter"];
+  else if(comm_type==ComType::Gather)
+    return logical_topologies["Gather"];
+  else if(comm_type==ComType::Reduce)
+    return logical_topologies["Reduce"];
   else{
     sys_panic("no known logical topology!");
     return nullptr;
@@ -638,6 +682,7 @@ DataSet* Sys::generate_all_reduce(
     vector<bool> involved_dimensions,
     CommunicatorGroup *communicator_group,
     int explicit_priority) {
+  
   if (communicator_group == nullptr) {
     return generate_collective(
         size,
@@ -740,6 +785,122 @@ DataSet* Sys::generate_reduce_scatter(
         plan->implementation_per_dimension,
         plan->dimensions_involved,
         ComType::Reduce_Scatter,
+        explicit_priority,
+        communicator_group);
+  }
+}
+
+DataSet* Sys::generate_broadcast(
+    uint64_t size,
+    vector<bool> involved_dimensions,
+    CommunicatorGroup *communicator_group,
+    int explicit_priority) {
+  sys_panic("broadcast not supported right now");
+  if (communicator_group == nullptr) {
+    return generate_collective(
+        size,
+        logical_topologies["Broadcast"],
+        broadcast_implementation_per_dimension,
+        involved_dimensions,
+        ComType::Broadcast,
+        explicit_priority,
+        communicator_group);
+  } else {
+    CollectivePlan *plan
+      = communicator_group->get_collective_plan(ComType::Broadcast);
+    return generate_collective(
+        size,
+        plan->topology,
+        plan->implementation_per_dimension,
+        plan->dimensions_involved,
+        ComType::Broadcast,
+        explicit_priority,
+        communicator_group);
+  }
+}
+
+DataSet* Sys::generate_scatter(
+    uint64_t size,
+    vector<bool> involved_dimensions,
+    CommunicatorGroup *communicator_group,
+    int explicit_priority) {
+  // sys_panic("broadcast not supported right now");
+  if (communicator_group == nullptr) {
+    return generate_collective(
+        size,
+        logical_topologies["Scatter"],
+        scatter_implementation_per_dimension,
+        involved_dimensions,
+        ComType::Scatter,
+        explicit_priority,
+        communicator_group);
+  } else {
+    CollectivePlan *plan
+      = communicator_group->get_collective_plan(ComType::Scatter);
+    return generate_collective(
+        size,
+        plan->topology,
+        plan->implementation_per_dimension,
+        plan->dimensions_involved,
+        ComType::Scatter,
+        explicit_priority,
+        communicator_group);
+  }
+}
+
+DataSet* Sys::generate_gather(
+    uint64_t size,
+    vector<bool> involved_dimensions,
+    CommunicatorGroup *communicator_group,
+    int explicit_priority) {
+  // sys_panic("broadcast not supported right now");
+  if (communicator_group == nullptr) {
+    return generate_collective(
+        size,
+        logical_topologies["Gather"],
+        gather_implementation_per_dimension,
+        involved_dimensions,
+        ComType::Gather,
+        explicit_priority,
+        communicator_group);
+  } else {
+    CollectivePlan *plan
+      = communicator_group->get_collective_plan(ComType::Gather);
+    return generate_collective(
+        size,
+        plan->topology,
+        plan->implementation_per_dimension,
+        plan->dimensions_involved,
+        ComType::Gather,
+        explicit_priority,
+        communicator_group);
+  }
+}
+
+DataSet* Sys::generate_reduce(
+    uint64_t size,
+    vector<bool> involved_dimensions,
+    CommunicatorGroup *communicator_group,
+    int explicit_priority) {
+  // sys_panic("broadcast not supported right now");
+  if (communicator_group == nullptr) {
+    return generate_collective(
+        size,
+        logical_topologies["Reduce"],
+        reduce_implementation_per_dimension,
+        involved_dimensions,
+        ComType::Reduce,
+        explicit_priority,
+        communicator_group);
+  } else {
+    CollectivePlan *plan
+      = communicator_group->get_collective_plan(ComType::Reduce);
+    return generate_collective(
+        size,
+        plan->topology,
+        plan->implementation_per_dimension,
+        plan->dimensions_involved,
+        ComType::Reduce,
         explicit_priority,
         communicator_group);
   }
@@ -1296,7 +1457,7 @@ void Sys::schedule(int num) {
     proceed_to_next_vnet_baseline((StreamBaseline*)ready_list.front());
 
     if (ready_list.front()->current_queue_id == -1) {
-      Sys::sys_panic(
+      Sys::sys_panic(  
           "should not happen! " +
           to_string(
               BaseStream::synchronizer[ready_list.front()->stream_id]) +

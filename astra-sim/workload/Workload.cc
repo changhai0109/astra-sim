@@ -29,8 +29,8 @@ Workload::Workload(
     string comm_group_filename) {
   this->sys = sys;
   string eg_full_filename;  // the eg filename specific to this npu
-  if(file_exists(eg_filename + "." + to_string(sys->id) + "torch.eg"))
-    eg_full_filename = eg_filename + "." + to_string(sys->id) + "torch.eg";
+  if(file_exists(eg_filename + "." + to_string(sys->id) + ".chakra.eg"))
+    eg_full_filename = eg_filename + "." + to_string(sys->id) + ".chakra.eg";
   else if(file_exists(eg_filename + "." + to_string(sys->id) + ".eg"))
     eg_full_filename = eg_filename + "." + to_string(sys->id) + ".eg";
   else {
@@ -40,7 +40,7 @@ Workload::Workload(
     return;
   }
   this->eg_feeder =
-        new EGFeeder(eg_full_name);
+        new EGFeeder(eg_full_filename);
   // TODO: parametrize the number of available hardware resources
   this->hw_resource = new HardwareResource(1);
   initialize_comm_group(comm_group_filename);
@@ -136,6 +136,7 @@ void Workload::issue(shared_ptr<Chakra::EGFeederNode> node) {
     }
     issue_comm(node);
   } else if (node->getChakraNode()->node_type() == ChakraNodeType::INVALID_NODE) {
+    cerr << "invalid node" << std::endl;
     skip_invalid(node);
   }
 }
@@ -158,6 +159,7 @@ void Workload::issue_comm(shared_ptr<Chakra::EGFeederNode> node) {
   int src, dst;
 
   hw_resource->occupy(node);
+  // std::cerr << __FILE__ << __LINE__ << std::endl;
 
   vector<bool> involved_dim;
   for (int i = 0; i < node->getChakraNode()->involved_dim_size(); i++) {
@@ -165,6 +167,7 @@ void Workload::issue_comm(shared_ptr<Chakra::EGFeederNode> node) {
   }
 
   if (node->getChakraNode()->node_type() == ChakraNodeType::COMM_COLL_NODE) {
+    // std::cerr << __FILE__ << __LINE__  << std::endl;
     if (node->getChakraNode()->comm_type() == ChakraCollectiveCommType::ALL_REDUCE) {
       DataSet *fp = sys->generate_all_reduce(
           node->getChakraNode()->comm_size(),
@@ -201,6 +204,15 @@ void Workload::issue_comm(shared_ptr<Chakra::EGFeederNode> node) {
       collective_comm_node_id_map[fp->my_id] = node->getChakraNode()->id();
       fp->set_notifier(this, EventType::CollectiveCommunicationFinished);
 
+    } else if (node->getChakraNode()->comm_type() == ChakraCollectiveCommType::BROADCAST) {
+      std::cerr << __FILE__ << __LINE__ << "Boradcast!" << std::endl;
+      DataSet *fp = sys->generate_broadcast(
+        node->getChakraNode()->comm_size(),
+        involved_dim,
+        get_comm_group(1),
+        node->getChakraNode()->comm_priority());
+      collective_comm_node_id_map[fp->my_id] = node->getChakraNode()->id();
+      fp->set_notifier(this, EventType::CollectiveCommunicationFinished);
     }
   } else if (node->getChakraNode()->node_type() == ChakraNodeType::COMM_SEND_NODE) {
     sim_request snd_req;

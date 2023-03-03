@@ -55,7 +55,11 @@ enum class ComType {
   All_Gather,
   All_Reduce,
   All_to_All,
-  All_Reduce_All_to_All
+  All_Reduce_All_to_All,
+  Reduce,
+  Broadcast,
+  Gather,
+  Scatter
 };
 
 enum class CollectiveOptimization {
