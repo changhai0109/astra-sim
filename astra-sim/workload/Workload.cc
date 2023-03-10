@@ -169,6 +169,7 @@ void Workload::issue_comm(shared_ptr<Chakra::EGFeederNode> node) {
   if (node->getChakraNode()->node_type() == ChakraNodeType::COMM_COLL_NODE) {
     // std::cerr << __FILE__ << __LINE__  << std::endl;
     if (node->getChakraNode()->comm_type() == ChakraCollectiveCommType::ALL_REDUCE) {
+      std::cerr << "ALL_REDUCE" << __FILE__ << __LINE__  << std::endl;
       DataSet *fp = sys->generate_all_reduce(
           node->getChakraNode()->comm_size(),
           involved_dim,
@@ -265,6 +266,7 @@ void Workload::call(EventType event, CallData* data) {
   }
 
   if (event == EventType::CollectiveCommunicationFinished) {
+    std::cerr << "CollCommFinished" << __FILE__ << __LINE__  << std::endl;
     IntData* int_data = (IntData*)data;
     uint64_t node_id = collective_comm_node_id_map[int_data->data];
     shared_ptr<Chakra::EGFeederNode> node = eg_feeder->lookupNode(node_id);

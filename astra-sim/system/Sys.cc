@@ -695,7 +695,8 @@ DataSet* Sys::generate_all_reduce(
   } else {
     CollectivePlan *plan
       = communicator_group->get_collective_plan(ComType::All_Reduce);
-    return generate_collective(
+    std::cerr << "ALL_REDUCE" << __FILE__ << __LINE__  << std::endl;
+    auto ret = generate_collective(
         size,
         plan->topology,
         plan->implementation_per_dimension,
@@ -703,6 +704,8 @@ DataSet* Sys::generate_all_reduce(
         ComType::All_Reduce,
         explicit_priority,
         communicator_group);
+    std::cerr << "ALL_REDUCE" << __FILE__ << __LINE__  << ret << std::endl;
+    return ret;
   }
 }
 
@@ -795,7 +798,6 @@ DataSet* Sys::generate_broadcast(
     vector<bool> involved_dimensions,
     CommunicatorGroup *communicator_group,
     int explicit_priority) {
-  sys_panic("broadcast not supported right now");
   if (communicator_group == nullptr) {
     return generate_collective(
         size,
