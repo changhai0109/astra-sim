@@ -1,114 +1,174 @@
-# ASTRA-Sim #
+# ASTRA-sim 2.0
+ASTRA-sim is a distributed machine learning system simulator, developed as a joint collaboration between Georgia Tech, Meta, and Intel.
+The previous version, ASTRA-sim 1.0, is available in the `ASTRA-sim-1.0` branch.
 
-### What is this repository for? ###
-This is the ASTRA-sim distributed Deep Learning Training simulator, developed in collaboration between Georgia Tech, Facebook and Intel.
-
-An overview is presented here:
+Here is a concise visual summary of our simulator:
 ![alt text](https://github.com/astra-sim/astra-sim/blob/master/docs/images/astrasim_overview_codesign.png)
 
-The full description of the tool and its strength can be found in the paper below:
+For a comprehensive understanding of the tool, and to gain insights into its capabilities, please refer to our paper:
 
-Saeed Rashidi, Srinivas Sridharan, Sudarshan Srinivasan, and Tushar Krishna,
-"ASTRA-SIM: Enabling SW/HW Co-Design Exploration for Distributed DL Training Platforms"
-*In Proc of the IEEE International Symposium on Performance Analysis of Systems and Software (ISPASS), Apr 2020*
-[[pdf]](https://sites.gatech.edu/ece-synergy/files/2020/08/astrasim_ispass2020.pdf)[[slides]](https://cpb-us-w2.wpmucdn.com/sites.gatech.edu/dist/c/332/files/2020/08/ISPASS2020-ASTRA-SIM_talk.pdf)[[video]](https://www.youtube.com/watch?v=S-HE9yBv8_I&list=PLHJB2bhmgB7crXM7wBKIDi7OEa0UTZtrR&index=10)
+William Won, Taekyung Heo, Saeed Rashidi, Srinivas Sridharan, Sudarshan Srinivasan, and Tushar Krishna, "ASTRA-sim2.0: Modeling Hierarchical Networks and Disaggregated Systems for Large-model Training at Scale". In Proceedings of the IEEE International Symposium on Performance Analysis of Systems and Software (ISPASS), April 2023. [[pdf]](https://arxiv.org/pdf/2303.14006.pdf)
 
-**Bibtex**
+For tutorials on how to use ASTRA-SIM, please visit our [tutorial page](https://astra-sim.github.io/).
 
-    @inproceedings{astrasim,
-        author       = {Saeed Rashidi and
-                       Srinivas Sridharan and
-                       Sudarshan Srinivasan and
-                       Tushar Krishna},
-        title        = {{ASTRA-SIM: Enabling SW/HW Co-Design Exploration for Distributed DL Training Platforms}},
-        booktitle     = {{IEEE} International Symposium on Performance Analysis of Systems
-                        and Software, {ISPASS} 2020, Boston, MA, USA, August 22-26, 2020},
-      publisher     = {{IEEE}},
-      year          = {2020},
-    }
+## Citation
+If you use ASTRA-sim in your research, please cite our paper:
 
-
-### Setup Instructions ###
-
-```bash
-# Clone the repository
-$ git clone https://github.com/astra-sim/astra-sim.git
-
-# cloning the submodules
-$ cd astra-sim
-$ git submodule init
-$ git submodule update
+```
+@INPROCEEDINGS{10158106,
+    author={Won, William and Heo, Taekyung and Rashidi, Saeed and Sridharan, Srinivas and Srinivasan, Sudarshan and Krishna, Tushar},
+    booktitle={2023 IEEE International Symposium on Performance Analysis of Systems and Software (ISPASS)},
+    title={ASTRA-sim2.0: Modeling Hierarchical Networks and Disaggregated Systems for Large-model Training at Scale},
+    year={2023},
+    volume={},
+    number={},
+    pages={283-294},
+    doi={10.1109/ISPASS57527.2023.00035}}
 ```
 
-#### Instructions for compiling & running Garnet2.0 as the network simulator
-1. Run `./build/astra_garnet/build.sh -c` to compile and integrate astra-sim with gem5 (`-l` flag will clean the compilation). This will create a binary file where garnet is integrated with astra-sim. The analytical backend is hosted at  https://github.com/georgia-tech-synergy-lab/gem5_astra .
-2. Run an example inside the `examples/` directory with garnet as a backend. Example: `examples/run_allreduce.sh -n garnet`. This command will run a single all-reduce collective on a Torus topology. 
-3. The results of example script runs will be dumped inside `examples/results/` path.
+## Build Instructions
+ASTRA-sim can be built either in your local environment or within a Docker container.
+The following steps will guide you through both methods.
+### 1. Build ASTRA-sim Locally
+To build ASTRA-sim without using Docker, you first need to install the necessary packages.
+This can be done using the following commands:
+```bash
+$ apt-get -y update
+$ apt-get -y install\
+    gcc g++ make cmake\
+    libboost-dev libboost-program-options-dev\
+    libprotobuf-dev protobuf-compiler\
+    python3 python3-pip git
+$ pip3 install protobuf==3.6.1 pydot
+```
 
-#### Instructions for compiling & running analytical backend as the network simulator
-1. Run `./build/astra_analytical/build.sh -c` to compile and integrate astra-sim with analytical backend (`-l` flag will clean the compilation). This will create a binary file where analytical backend is integrated with astra-sim. Please refer to [this page](https://github.com/astra-sim/astra-sim/tree/master/build/astra_analytical) for more details about compilation. The analytical backend is hosted at https://github.com/astra-sim/analytical .
-2. Run an example inside the `examples/` directory with the analytical model as a backend. Example: `examples/run_allreduce.sh -n analytical`. This command will run a single all-reduce collective on a Torus topology. 
-3. The results of example script runs will be dumped inside `examples/results/` path. 
+Once the packages are installed, you will need to clone this repository onto your local machine using the following command:
+```bash
+$ git clone --recurse-submodules git@github.com:astra-sim/astra-sim.git
+```
 
-#### Instructions for compiling & running NS3 as the network simulator
-1. Check-out to the **ns3_interface_tmp2** branch by running `git checkout ns3_interface_tmp2` .
-2. Update the submodules by typing `git submodule init & git submodule update`. The ns3 backend is hosted at https://github.com/DartingMelody/ns3-interface.
-3. Go to the ns3 directory: `cd extern/network_backend/ns3-interface/simulation/` and run `./waf configure` (only required once)
-4. Now go back to the root directory of ASTRA-SIM and run "./build/astra_ns3/build.sh -c". This will first copy the ASTRA-SIM/ns3 glue code (stored in the `astra-sim/network_frontend/ns3` directory and contains the main file), and then build and run the ns3 main file. Please refer to the `astra-sim/network_frontend/ns3` for more information about the glue code.
-5. The stat files are written into `extern/network_backend/ns3-interface/simulation/scratch/results/` address. Note that this version supports multi-workload cases, meaning that for example, with the total of P NPUs, NPUs 0 : N can be allocated for one workload, and NPUs N+1 : P-1 for another workload. If multiple workloads are used, then each worklaod produces its own set of stat files. The stat file names are appended by number, showing the index of first NPU assigned for that workload.
+Then, based on your target network backend, execute the corresponding build script:
+```bash
+# For the analytical network backend
+$ ./build/astra_analytical/build.sh -c
+```
 
-NOTE: The on-screen reported delays (no matter what backend is used) after the end of simulation are in cycles while the delays inside the csv files are in terms of microseconds.
+### 2. Build ASTRA-sim in a Docker Image
+Alternatively, you can build ASTRA-sim within a Docker container.
+Start by cloning this repository to your local machine using the same command as above:
+```bash
+$ git clone --recurse-submodules git@github.com:astra-sim/astra-sim.git
+```
 
-#### ASTRA-SIM Binary Command Line Options
-When running the binary file (no matter what backend is used), the following options may be passed to the binary file (see example scripts):
+Next, create a Docker image using the following command:
+```bash
+$ docker build -t astra-sim .
+```
 
-**--network-configuration (required):** The network input file dir.
+Once the Docker image is created, you can run it with this command:
+```bash
+$ docker run -it astra-sim
+```
 
-**--system-configuration  (required):** The system input file dir.
+Finally, similar to the local build process, depending on your target network backend, you should run the corresponding build script:
+```bash
+# For the analytical network backend
+$ ./build/astra_analytical/build.sh -c
+```
 
-**--workload-configuration (required):** The workload input file dir.
+## Running ASTRA-sim
+Once ASTRA-sim is built, conduct experiments by passing the required configurations.
+You might need to provide additional configurations based on the network backend.
+The following configurations are mandatory:
+* --workload-configuration: Path prefix to the execution trace. The naming rule for execution traces follows the format `{path prefix}.{npu_id}.eg`. This argument provides the path prefix.
+* --system-configuration: Path to the system configuration. Example system configurations can be found at `inputs/system/`.
+* --network-configuration: Path to the network configuration Example network configurations can be found at `inputs/network/`.
 
-**--path (required):** The path to dump the results.
+Execution traces can be created using Chakra tools. You have the option of using either [the execution trace generator (et_generator)](https://github.com/chakra-et/chakra#execution-trace-generator-et_generator)
+or [the execution trace converter (et_converter)](https://github.com/chakra-et/chakra#execution-trace-converter-et_converter).
+The et_generator can be used to define and generate any execution traces, functioning as a test case generator. Meanwhile, the et_converter is a trace schema conversion tool, supporting PyTorch and FlexFlow execution traces, as well as ASTRA-sim 1.0 input files.
 
-**--run-name  (required):** Name of the current run.
+### Using the Execution Trace Generator
+You can generate execution traces with et_generator with the following commands.
+```bash
+$ cd extern/graph_frontend/chakra/et_generator
+$ cmake CMakeLists.txt && make -j$(nproc)
+$ ./et_generator --num_npus 64 --num_dims 1
+```
 
-**--num-passes  (required):** Number of training passes to simulate.
+To run one of the example traces (`twoCompNodesDependent`), execute the following command.
+```bash
+$ ./build/astra_analytical/build/AnalyticalAstra/bin/AnalyticalAstra \
+  --workload-configuration=./extern/graph_frontend/chakra/et_generator/twoCompNodesDependent \
+  --system-configuration=./inputs/system/sample_fully_connected_sys.txt \
+  --network-configuration=./inputs/network/analytical/fully_connected.json
+```
 
-**--total-stat-rows (required):** Total number of runs that want to write to the same csv file (please see run_multi.sh inside the "examples/"" directory). This is useful when multiple runs want to write to the same csv file. This value should be 1 if only 1 run is executed. 
+Upon completion, ASTRA-sim will display the number of cycles it took to run the simulation.
+```bash
+sys[0] finished, 10 cycles
+sys[1] finished, 10 cycles
+...
+sys[62] finished, 10 cycles
+sys[63] finished, 10 cycles
+```
 
-**--stat-row  (required):** The position of the run to write its stats into the csv stat files (please see run_multi.sh inside the "examples/"" directory). This is useful when multiple runs want to write to the same csv file. This value should be 0 if only 1 run is executed.
+### Using the Execution Trace Converter
+You can convert ASTRA-sim 1.0 text input files into Chakra traces with the following commands.
+```bash
+$ cd extern/graph_frontend/chakra/
+$ python3 setup.py install
+$ python3 -m et_converter.et_converter\
+    --input_type Text\
+    --input_filename ../../../inputs/workload/ASTRA-sim-1.0/Resnet50_DataParallel.txt\
+    --output_filename ../../../inputs/workload/ASTRA-sim-2.0/Resnet50_DataParallel\
+    --num_npus 64\
+    --num_dims 1\
+    --num_passes 1
+```
 
-**--compute-scale (optional):** Scales the all compute times (reported in the workload input file) by this scale. Tge default value is 1.
+Run the following command.
+```bash
+$ ./build/astra_analytical/build/AnalyticalAstra/bin/AnalyticalAstra \
+  --workload-configuration=./inputs/workload/ASTRA-sim-2.0/Resnet50_DataParallel \
+  --system-configuration=./inputs/system/sample_fully_connected_sys.txt \
+  --network-configuration=./inputs/network/analytical/fully_connected.json
+```
 
-**--comm-scale  (optional):** Scales the all communication sizes (reported in the workload input file) by this scale. Tge default value is 1.
+Upon completion, ASTRA-sim will display the number of cycles it took to run the simulation.
+```bash
+sys[62] finished, 187442108 cycles
+sys[61] finished, 187442108 cycles
+...
+sys[0] finished, 187442108 cycles
+sys[63] finished, 187442108 cycles
+```
 
-NOTE: The garnet+astra-sim binary also allows all of the network input options be overridden by the command line options. 
+## Features Under Active Development
+We are constantly working to improve ASTRA-sim and expand its capabilities. Here are some of the features that are currently under active development:
 
-### Input Files to ASTRA-sim ###
+* Memory API
+* Congestion-aware Analytical Network Backend
+* NS3 Network Backend
+* Garnet Network Backend
+* Detailed Statistics Report (Network Utilization)
+  
+Please note that these features are under active development and, while we aim to have them available as soon as possible, the completion timeline can vary. Check back regularly for updates on the progress of these and other features. We appreciate your interest and support in ASTRA-sim!
 
-* Workload: `inputs/workload/`
-   * see `inputs/workload/README.md`
-   * see `scripts/workload_generator/README.md` for instruction on how to use an automated script to generate workload input files.
-* System: `inputs/system/`
-   * see `inputs/system/README.md`
-* Network: 
-    * `inputs/network/garnet` (for garnet backend inputs)
-      * see inputs/network/garnet/README.md`
-    * `inputs/network/analytical` (for analytical backend inputs)
-      * see `inputs/network/analytical/README.md`
-    
 
-### Contact ###
-Please email Saeed Rashidi (saeed.rashidi@gatech.edu) or Srinivas Sridharan (ssrinivas@fb.com) or Tushar Krishna (tushar@ece.gatech.edu) if you have any questions.
+## Contact Us
+This project is a collaboration of dedicated professionals. Each core developer and contributor plays a unique role in the project. For any inquiries or questions, feel free to reach out to the corresponding developer based on their expertise. 
+| Developer | Organization | Responsibility | Contact |
+|-----------|--------------|----------------|---------|
+| Saeed Rashidi | Hewlett Packard Labs | ASTRA-sim 1.0, system layer, communicator groups, in-switch collective communication | rashidi1saeid@gmail.com |
+| William Won | Georgia Tech | Network layer | william.won@gatech.edu |
+| Taekyung Heo | Georgia Tech | Chakra, workload layer, graph execution engine, memory API | taekyung@gatech.edu |
+| Srinivas Sridharan | Meta | Chakra, General inquiries | ssrinivas@fb.com |
+| Tushar Krishna | Georgia Tech | General inquiries | tushar@ece.gatech.edu |
 
-### Core Developers ###
-* Saeed Rashidi (Georgia Tech)
-* Srinivas Sridharan (Facebook)
-
-### Additional Contributors ###
+## Additional Contributors
 * Jiayi Huang (University of California, Santa Barbara)
 * Apurve Chawde (Georgia Tech)
 * Santosh Kumar Elangoven (Georgia Tech)
-* William Won (Georgia Tech)
-* Tushar Krishna (Georgia Tech)
-* Greg Steinbrecher (Facebook)
+* Greg Steinbrecher (Meta)
+* Changhai Man (Georgia Tech)
