@@ -421,9 +421,20 @@ void Workload::call(EventType event, CallData* data) {
 
     // The Dataset class provides statistics that should be used later to dump
     // more statistics in the workload layer
-    delete collective_comm_wrapper_map[node_id];
-    collective_comm_wrapper_map.erase(node_id);
-
+    // TODO: hotfix shouldnt be double delete.
+    if (collective_comm_wrapper_map.find(node_id) ==
+        collective_comm_wrapper_map.end()) {
+      Logger::getLogger("workload")
+          ->debug(
+              "[critical!!!] Try to double delete collective_comm_wrapper_map[{}]",
+              node_id);
+    } else {
+      // TODO: will cause memory leak.
+      //       If delete, then will cause segfault at Sys.cc:1391
+      //       proceed_to_next_vnet_baseline notify_stream_finished
+      // delete collective_comm_wrapper_map.at(node_id);
+      collective_comm_wrapper_map.erase(node_id);
+    }
   } else {
     if (data == nullptr) {
       issue_dep_free_nodes();
