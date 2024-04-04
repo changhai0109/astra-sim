@@ -6,6 +6,7 @@ LICENSE file in the root directory of this source tree.
 #include "astra-sim/workload/Workload.hh"
 
 #include <json/json.hpp>
+#include "astra-sim/common/Logging.hh"
 #include "astra-sim/system/IntData.hh"
 #include "astra-sim/system/MemEventHandlerData.hh"
 #include "astra-sim/system/RecvPacketEventHandlerData.hh"
@@ -38,7 +39,7 @@ Workload::Workload(Sys* sys, string et_filename, string comm_group_filename) {
       error_msg =
           "Unknown workload file: " + workload_filename + " access error";
     }
-    cerr << error_msg << endl;
+    Logger::getLogger("workload")->critical(error_msg);
     exit(EXIT_FAILURE);
   }
   this->et_feeder = new ETFeeder(workload_filename);
@@ -112,17 +113,22 @@ void Workload::issue_dep_free_nodes() {
 }
 
 void Workload::issue(shared_ptr<Chakra::ETFeederNode> node) {
+  if (sys->trace_enabled) {
+    Logger::getLogger("workload")
+        ->debug(
+            "issue,sys->id={},tick={},node->id={},node->name={},node_type={}",
+            sys->id,
+            Sys::boostedTick(),
+            node->id(),
+            node->name(),
+            node->type());
+  }
   if (sys->replay_only) {
     hw_resource->occupy(node);
     issue_replay(node);
   } else {
     if ((node->type() == ChakraNodeType::MEM_LOAD_NODE) ||
         (node->type() == ChakraNodeType::MEM_STORE_NODE)) {
-      if (sys->trace_enabled) {
-        cout << "issue,sys->id=" << sys->id << ",tick=" << Sys::boostedTick()
-             << ",node->id=" << node->id() << ",node->name=" << node->name()
-             << endl;
-      }
       issue_remote_mem(node);
     } else if (
         node->is_cpu_op() ||
@@ -130,11 +136,6 @@ void Workload::issue(shared_ptr<Chakra::ETFeederNode> node) {
       if ((node->runtime() == 0) && (node->num_ops() == 0)) {
         skip_invalid(node);
       } else {
-        if (sys->trace_enabled) {
-          cout << "issue,sys->id=" << sys->id << ",tick=" << Sys::boostedTick()
-               << ",node->id=" << node->id() << ",node->name=" << node->name()
-               << endl;
-        }
         issue_comp(node);
       }
     } else if (
@@ -142,12 +143,8 @@ void Workload::issue(shared_ptr<Chakra::ETFeederNode> node) {
         (node->type() == ChakraNodeType::COMM_COLL_NODE ||
          (node->type() == ChakraNodeType::COMM_SEND_NODE) ||
          (node->type() == ChakraNodeType::COMM_RECV_NODE))) {
-      if (sys->trace_enabled) {
-        cout << "issue,sys->id=" << sys->id << ",tick=" << Sys::boostedTick()
-             << ",node->id=" << node->id() << ",node->name=" << node->name()
-             << endl;
-      }
       issue_comm(node);
+    } else if (node->type() == ChakraNodeType::INVALID_NODE) {
     } else if (node->type() == ChakraNodeType::INVALID_NODE) {
       skip_invalid(node);
     }
@@ -157,12 +154,15 @@ void Workload::issue(shared_ptr<Chakra::ETFeederNode> node) {
 void Workload::issue_replay(shared_ptr<Chakra::ETFeederNode> node) {
   WorkloadLayerHandlerData* wlhd = new WorkloadLayerHandlerData;
   wlhd->node_id = node->id();
-  uint64_t runtime = 1ul;
-  if (node->runtime() != 0ul)
-    // chakra runtimes are in microseconds and we should convert it into
-    // nanoseconds
-    runtime = node->runtime() * 1000;
-  sys->register_event(this, EventType::General, wlhd, runtime);
+
+  assert(node->runtime() != 0);
+  sys->register_event(
+      this,
+      EventType::General,
+      wlhd,
+      // chakra runtimes are in microseconds and we should convert it into
+      // nanoseconds
+      node->runtime() * 1000);
 }
 
 void Workload::issue_remote_mem(shared_ptr<Chakra::ETFeederNode> node) {
@@ -183,14 +183,17 @@ void Workload::issue_comp(shared_ptr<Chakra::ETFeederNode> node) {
     wlhd->node_id = node->id();
 
     double operational_intensity = static_cast<double>(node->num_ops()) /
+        double operational_intensity = static_cast<double>(node->num_ops()) /
         static_cast<double>(node->tensor_size());
     double perf = sys->roofline->get_perf(operational_intensity);
+    double elapsed_time = static_cast<double>(node->num_ops()) / perf;
     double elapsed_time = static_cast<double>(node->num_ops()) / perf;
     uint64_t runtime = static_cast<uint64_t>(elapsed_time);
     sys->register_event(this, EventType::General, wlhd, runtime);
   } else {
-    // advance this node forward the recorded "replayed" time specificed in the
-    // ET.
+    // advance this node forward the recorded "replayed" time specificed in
+    // the ET. advance this node forward the recorded "replayed" time
+    // specificed in the ET.
     issue_replay(node);
   }
 }
@@ -207,38 +210,41 @@ void Workload::issue_comm(shared_ptr<Chakra::ETFeederNode> node) {
     if (node->comm_type() == ChakraCollectiveCommType::ALL_REDUCE) {
       DataSet* fp = sys->generate_all_reduce(
           node->comm_size(), involved_dim, comm_group, node->comm_priority());
-      collective_comm_node_id_map[fp->my_id] = node->id();
-      collective_comm_wrapper_map[fp->my_id] = fp;
-      fp->set_notifier(this, EventType::CollectiveCommunicationFinished);
+          node->comm_size(), involved_dim, comm_group, node->comm_priority());
+          collective_comm_node_id_map[fp->my_id] = node->id();
+          collective_comm_wrapper_map[fp->my_id] = fp;
+          fp->set_notifier(this, EventType::CollectiveCommunicationFinished);
 
     } else if (node->comm_type() == ChakraCollectiveCommType::ALL_TO_ALL) {
       DataSet* fp = sys->generate_all_to_all(
           node->comm_size(), involved_dim, comm_group, node->comm_priority());
-      collective_comm_node_id_map[fp->my_id] = node->id();
-      collective_comm_wrapper_map[fp->my_id] = fp;
-      fp->set_notifier(this, EventType::CollectiveCommunicationFinished);
+          node->comm_size(), involved_dim, comm_group, node->comm_priority());
+          collective_comm_node_id_map[fp->my_id] = node->id();
+          collective_comm_wrapper_map[fp->my_id] = fp;
+          fp->set_notifier(this, EventType::CollectiveCommunicationFinished);
 
     } else if (node->comm_type() == ChakraCollectiveCommType::ALL_GATHER) {
       DataSet* fp = sys->generate_all_gather(
           node->comm_size(), involved_dim, comm_group, node->comm_priority());
-      collective_comm_node_id_map[fp->my_id] = node->id();
-      collective_comm_wrapper_map[fp->my_id] = fp;
-      fp->set_notifier(this, EventType::CollectiveCommunicationFinished);
+          node->comm_size(), involved_dim, comm_group, node->comm_priority());
+          collective_comm_node_id_map[fp->my_id] = node->id();
+          collective_comm_wrapper_map[fp->my_id] = fp;
+          fp->set_notifier(this, EventType::CollectiveCommunicationFinished);
 
     } else if (node->comm_type() == ChakraCollectiveCommType::REDUCE_SCATTER) {
       DataSet* fp = sys->generate_reduce_scatter(
           node->comm_size(), involved_dim, comm_group, node->comm_priority());
-      collective_comm_node_id_map[fp->my_id] = node->id();
-      collective_comm_wrapper_map[fp->my_id] = fp;
-      fp->set_notifier(this, EventType::CollectiveCommunicationFinished);
-
+          node->comm_size(), involved_dim, comm_group, node->comm_priority());
+          collective_comm_node_id_map[fp->my_id] = node->id();
+          collective_comm_wrapper_map[fp->my_id] = fp;
+          fp->set_notifier(this, EventType::CollectiveCommunicationFinished);
     } else if (node->comm_type() == ChakraCollectiveCommType::BROADCAST) {
       // broadcast colelctive has not been implemented in ASTRA-SIM yet.
       // So, we just use its real system mesurements
       uint64_t runtime = 1ul;
       if (node->runtime() != 0ul)
-        // chakra runtimes are in microseconds and we should convert it into
-        // nanoseconds
+        // chakra runtimes are in microseconds and we should convert it
+        // into nanoseconds
         runtime = node->runtime() * 1000;
       DataSet* fp = new DataSet(1);
       fp->set_notifier(this, EventType::CollectiveCommunicationFinished);
@@ -248,10 +254,9 @@ void Workload::issue_comm(shared_ptr<Chakra::ETFeederNode> node) {
           fp,
           EventType::General,
           nullptr,
-          // chakra runtimes are in microseconds and we should convert it into
-          // nanoseconds
-          runtime);
-      fp->set_notifier(this, EventType::CollectiveCommunicationFinished);
+          // chakra runtimes are in microseconds and we should convert
+          // it into nanoseconds
+          node->runtime() * 1000);
     }
   } else if (node->type() == ChakraNodeType::COMM_SEND_NODE) {
     sim_request snd_req;
@@ -291,7 +296,7 @@ void Workload::issue_comm(shared_ptr<Chakra::ETFeederNode> node) {
         &Sys::handleEvent,
         rcehd);
   } else {
-    cerr << "Unknown communication node type" << endl;
+    Logger::getLogger("workload")->critical("Unknown communication node type");
     exit(EXIT_FAILURE);
   }
 }
@@ -312,9 +317,14 @@ void Workload::call(EventType event, CallData* data) {
     shared_ptr<Chakra::ETFeederNode> node = et_feeder->lookupNode(node_id);
 
     if (sys->trace_enabled) {
-      cout << "callback,sys->id=" << sys->id << ",tick=" << Sys::boostedTick()
-           << ",node->id=" << node->id() << ",node->name=" << node->name()
-           << endl;
+      Logger::getLogger("workload")
+          ->debug(
+              "callback,sys->id={},tick={},node->id={},node->name={},node_type={}",
+              sys->id,
+              Sys::boostedTick(),
+              node->id(),
+              node->name(),
+              node->type());
     }
 
     hw_resource->release(node);
@@ -325,8 +335,8 @@ void Workload::call(EventType event, CallData* data) {
 
     et_feeder->removeNode(node_id);
 
-    // The Dataset class provides statistics that should be used later to dump
-    // more statistics in the workload layer
+    // The Dataset class provides statistics that should be used later
+    // to dump more statistics in the workload layer
     delete collective_comm_wrapper_map[node_id];
     collective_comm_wrapper_map.erase(node_id);
 
@@ -339,9 +349,14 @@ void Workload::call(EventType event, CallData* data) {
           et_feeder->lookupNode(wlhd->node_id);
 
       if (sys->trace_enabled) {
-        cout << "callback,sys->id=" << sys->id << ",tick=" << Sys::boostedTick()
-             << ",node->id=" << node->id() << ",node->name=" << node->name()
-             << endl;
+        Logger::getLogger("workload")
+            ->debug(
+                "callback,sys->id={},tick={},node->id={},node->name={},node_type={}",
+                sys->id,
+                Sys::boostedTick(),
+                node->id(),
+                node->name(),
+                node->type());
       }
 
       hw_resource->release(node);
@@ -370,5 +385,6 @@ void Workload::fire() {
 
 void Workload::report() {
   Tick curr_tick = Sys::boostedTick();
-  cout << "sys[" << sys->id << "] finished, " << curr_tick << " cycles" << endl;
+  Logger::getLogger("workload")
+      ->info("sys[{}] finished, {} cycles", sys->id, curr_tick);
 }

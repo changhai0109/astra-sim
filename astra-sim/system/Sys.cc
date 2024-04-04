@@ -9,6 +9,7 @@ LICENSE file in the root directory of this source tree.
 #include <iostream>
 
 #include <json/json.hpp>
+#include "astra-sim/common/Logging.hh"
 #include "astra-sim/system/BaseStream.hh"
 #include "astra-sim/system/CollectivePlan.hh"
 #include "astra-sim/system/DataSet.hh"
@@ -331,11 +332,12 @@ Sys::~Sys() {
 }
 
 bool Sys::initialize_sys(string name) {
+  auto logger = Logger::getLogger("System");
   ifstream inFile;
   inFile.open(name);
   if (!inFile) {
     if (id == 0) {
-      cerr << "Unable to open file: " << name << endl;
+      logger->critical("Unable to open file: {}", name);
     }
     exit(1);
   }
@@ -513,12 +515,12 @@ Tick Sys::boostedTick() {
 }
 
 void Sys::sys_panic(string msg) {
-  cerr << msg << endl;
+  AstraSim::Logger::getLogger("System")->critical(msg);
   exit(1);
 }
 
 void Sys::exit_sim_loop(string msg) {
-  cout << msg << endl;
+  AstraSim::Logger::getLogger("System")->info(msg);
 }
 
 void Sys::call(EventType type, CallData* data) {}
@@ -830,8 +832,10 @@ DataSet* Sys::generate_collective(
              InterDimensionScheduling::OfflineGreedy &&
          inter_dimension_scheduling !=
              InterDimensionScheduling::OfflineGreedyFlex)) {
-      if (chunk_size > size) size = 0;
-      else size -= chunk_size;
+      if (chunk_size > size)
+        size = 0;
+      else
+        size -= chunk_size;
     }
     remain_size = chunk_size;
     list<CollectivePhase> vect;
@@ -1082,8 +1086,8 @@ CollectivePhase Sys::generate_collective_phase(
             collective_type, id, (RingTopology*)topology, data_size));
     return vn;
   } else {
-    cerr << "Error: No known collective implementation for collective phase"
-         << endl;
+    AstraSim::Logger::getLogger("System")->critical(
+        "Error: No known collective implementation for collective phase");
     exit(1);
   }
 }
