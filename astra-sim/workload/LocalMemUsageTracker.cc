@@ -224,10 +224,11 @@ void LocalMemUsageTracker::buildMemoryTrace() {
 }
 
 void LocalMemUsageTracker::dumpMemoryTrace(const std::string& filename) {
-  std::ofstream file(filename);
+  std::string local_mem_trace_filename = fmt::format(filename+".{}.json", this->sysId);
+  std::ofstream file(local_mem_trace_filename);
   if (!file.is_open()) {
     Logger::getLogger("workload::LocalMemUsageTracker")
-        ->error("failed to open file {}", filename);
+        ->error("failed to open file {}", local_mem_trace_filename);
     return;
   }
   json trace;

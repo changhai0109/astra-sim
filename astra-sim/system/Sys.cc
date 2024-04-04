@@ -470,6 +470,10 @@ bool Sys::initialize_sys(string name) {
       this->track_local_mem = false;
     }
   }
+  this->local_mem_trace_filename = "local_mem_trace";
+  if (j.contains("local-mem-trace-filename")) {
+    this->local_mem_trace_filename = j["local-mem-trace-filename"];
+  }
 
   inFile.close();
   return true;

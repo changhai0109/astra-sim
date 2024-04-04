@@ -244,6 +244,7 @@ class Sys : public Callable {
 
   // memory
   bool track_local_mem;
+  std::string local_mem_trace_filename;
   double local_mem_bw;
   AstraRemoteMemoryAPI* remote_mem;
 
