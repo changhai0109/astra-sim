@@ -12,6 +12,7 @@ LICENSE file in the root directory of this source tree.
 #include "astra-sim/system/RecvPacketEventHandlerData.hh"
 #include "astra-sim/system/SendPacketEventHandlerData.hh"
 #include "astra-sim/system/WorkloadLayerHandlerData.hh"
+#include "astra-sim/system/collective/Algorithm.hh"
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -269,11 +270,19 @@ void Workload::issue_comm(shared_ptr<Chakra::ETFeederNode> node) {
       throw MissingAttrException("comm_dst", node->id(), "issue_comm");
     if (!node->has_comm_tag())
       throw MissingAttrException("comm_tag", node->id(), "issue_comm");
+    if (node->comm_tag() >= Algorithm::TAG_OFFSET)
+      throw std::runtime_error(
+          "comm_tag should be less than " +
+          std::to_string(Algorithm::TAG_OFFSET) + " for comm_send_node");
   } else if (node->type() == ChakraNodeType::COMM_RECV_NODE) {
     if (!node->has_comm_src())
       throw MissingAttrException("comm_src", node->id(), "issue_comm");
     if (!node->has_comm_tag())
       throw MissingAttrException("comm_tag", node->id(), "issue_comm");
+    if (node->comm_tag() >= Algorithm::TAG_OFFSET)
+      throw std::runtime_error(
+          "comm_tag should be less than " +
+          std::to_string(Algorithm::TAG_OFFSET) + " for comm_recv_node");
   } else {
     Logger::getLogger("workload")->critical("Unknown communication node type");
     exit(EXIT_FAILURE);

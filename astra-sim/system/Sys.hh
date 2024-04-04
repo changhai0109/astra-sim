@@ -314,6 +314,8 @@ class Sys : public Callable {
 
   // skip simulation for all nodes and use current duration
   bool replay_only;
+
+  const int32_t RENDEZVOUS_COMM_TAG_OFFSET = 1000000000;
 };
 
 } // namespace AstraSim
