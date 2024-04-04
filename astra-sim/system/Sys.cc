@@ -462,6 +462,13 @@ bool Sys::initialize_sys(string name) {
       this->replay_only = false;
     }
   }
+  if (j.contains("track-local-mem")) {
+    if (j["track-local-mem"] != 0) {
+      this->track_local_mem = true;
+    } else {
+      this->track_local_mem = false;
+    }
+  }
 
   inFile.close();
   return true;
