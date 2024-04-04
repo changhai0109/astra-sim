@@ -45,6 +45,8 @@ Workload::Workload(Sys* sys, string et_filename, string comm_group_filename) {
   this->et_feeder = new ETFeeder(workload_filename);
   // TODO: parametrize the number of available hardware resources
   this->hw_resource = new HardwareResource(1);
+  this->local_mem_usage_tracker =
+      std::make_unique<LocalMemUsageTracker>(sys->id);
   this->sys = sys;
   initialize_comm_group(comm_group_filename);
   this->is_finished = false;
@@ -136,6 +138,12 @@ void Workload::issue(shared_ptr<Chakra::ETFeederNode> node) {
   const auto& node_type = node->type();
 
   hw_resource->occupy(node);
+  // TODO: think about what if for remote mem access. Should we free after
+  // remote write, or wait until a "mem dealloc node" The local can be keeped
+  // even after offload, then it do not need to be write back again later if not
+  // changed.
+  if (this->sys->track_local_mem)
+    this->local_mem_usage_tracker->recordStart(node, Sys::boostedTick());
   try {
     if (sys->replay_only) {
       issue_replay(node);
@@ -388,6 +396,8 @@ void Workload::skip_invalid(shared_ptr<Chakra::ETFeederNode> node) {
   et_feeder->freeChildrenNodes(node->id());
   et_feeder->removeNode(node->id());
   hw_resource->release(node);
+  if (this->sys->track_local_mem)
+    this->local_mem_usage_tracker->recordEnd(node, Sys::boostedTick());
 }
 
 void Workload::call(EventType event, CallData* data) {
@@ -412,6 +422,8 @@ void Workload::call(EventType event, CallData* data) {
     }
 
     hw_resource->release(node);
+    if (this->sys->track_local_mem)
+      this->local_mem_usage_tracker->recordEnd(node, Sys::boostedTick());
 
     et_feeder->freeChildrenNodes(node_id);
 
@@ -455,6 +467,8 @@ void Workload::call(EventType event, CallData* data) {
       }
 
       hw_resource->release(node);
+      if (this->sys->track_local_mem)
+        this->local_mem_usage_tracker->recordEnd(node, Sys::boostedTick());
 
       et_feeder->freeChildrenNodes(node->id());
 
@@ -483,4 +497,9 @@ void Workload::report() {
   Tick curr_tick = Sys::boostedTick();
   Logger::getLogger("workload")
       ->info("sys[{}] finished, {} cycles", sys->id, curr_tick);
+  if (this->sys->track_local_mem) {
+    this->local_mem_usage_tracker->buildMemoryTrace();
+    this->local_mem_usage_tracker->dumpMemoryTrace(
+        "local_mem_usage_trace." + to_string(sys->id) + ".json");
+  }
 }
