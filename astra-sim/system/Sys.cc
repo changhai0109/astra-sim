@@ -531,8 +531,8 @@ void Sys::call_events() {
       pending_events--;
       (get<0>(callable))->call(get<1>(callable), get<2>(callable));
     } catch (const std::exception& e) {
-      cerr << "warning! a callable is removed before call" << endl;
-      cerr << e.what() << endl;
+      AstraSim::Logger::getLogger("System")->critical(
+          "Get exception when calling events. Exception={}", e.what());
     }
   }
   if (event_queue[Sys::boostedTick()].size() > 0) {
@@ -1384,6 +1384,13 @@ void Sys::proceed_to_next_vnet_baseline(StreamBaseline* stream) {
   }
   if (stream->phases_to_go.size() == 0) {
     stream->take_bus_stats_average();
+    Logger::getLogger("debugSegFault")
+        ->trace(
+            "{}:{} accessed dataset{} within stream{}",
+            __FILE__,
+            __LINE__,
+            reinterpret_cast<uint64_t>(stream->dataset),
+            reinterpret_cast<uint64_t>(stream));
     stream->dataset->notify_stream_finished((StreamStat*)stream);
   }
   if (stream->current_queue_id >= 0 && stream->my_current_phase.enabled) {
