@@ -41,7 +41,6 @@ void HardwareResource::occupy(const shared_ptr<Chakra::ETFeederNode> node) {
       break;
     case ChakraNodeType::COMM_COLL_NODE:
     case ChakraNodeType::COMM_SEND_NODE:
-    case ChakraNodeType::COMM_RECV_NODE:
       assert(num_in_flight_comm_ops == 0);
       ++num_in_flight_comm_ops;
 #ifdef ASTRASIM_TRACE_HARDWARE_RESOURCES
@@ -56,6 +55,8 @@ void HardwareResource::occupy(const shared_ptr<Chakra::ETFeederNode> node) {
       logger->trace("Node.id={} occupy mem_ops", node->id());
 #endif
       break;
+    case ChakraNodeType::COMM_RECV_NODE: // the recv should be non-blocking and
+                                         // do not occupy resources
     case ChakraNodeType::INVALID_NODE:
       break;
     default:
@@ -83,7 +84,6 @@ void HardwareResource::release(const shared_ptr<Chakra::ETFeederNode> node) {
       break;
     case ChakraNodeType::COMM_COLL_NODE:
     case ChakraNodeType::COMM_SEND_NODE:
-    case ChakraNodeType::COMM_RECV_NODE:
       assert(num_in_flight_comm_ops > 0);
       --num_in_flight_comm_ops;
 #ifdef ASTRASIM_TRACE_HARDWARE_RESOURCES
@@ -98,6 +98,8 @@ void HardwareResource::release(const shared_ptr<Chakra::ETFeederNode> node) {
       logger->trace("Node.id={} release mem_ops", node->id());
 #endif
       break;
+    case ChakraNodeType::COMM_RECV_NODE: // the recv should be non-blocking and
+                                         // do not occupy resources
     case ChakraNodeType::INVALID_NODE:
       break;
     default:
