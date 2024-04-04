@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <memory>
+#include <unordered_set>
 #include "astra-sim/common/Common.hh"
 #include "astra-sim/common/Logging.hh"
 
@@ -10,25 +11,25 @@ using namespace Chakra;
 
 uint64_t LocalMemUsageTracker::parseIOInfos(
     const ChakraProtoMsg::AttributeProto& attr,
-    std::vector<std::tuple<std::string, uint64_t>>& IOinfos) {
+    std::vector<std::tuple<TensorId, uint64_t>>& IOinfos) {
   assert(IOinfos.size() == 0ul);
   assert(attr.string_list().values().size() % 2 == 0);
-  uint64_t parsed_cnt = 0ul;
-  for (size_t i = 0; i < attr.string_list().values().size(); i += 2) {
-    std::string name = attr.string_list().values().at(i);
+  uint64_t parsedCnt = 0ul;
+  for (int32_t i = 0; i < attr.string_list().values().size(); i += 2) {
+    TensorId name = attr.string_list().values().at(i);
     std::string sizeStr = attr.string_list().values().at(i + 1);
     uint64_t size = std::stoull(sizeStr);
     IOinfos.push_back(std::make_tuple(name, size));
-    parsed_cnt++;
+    parsedCnt++;
   }
-  return parsed_cnt;
+  return parsedCnt;
 }
 
 void LocalMemUsageTracker::recordReads(
     const std::shared_ptr<Chakra::ETFeederNode> node,
     Tick start,
     Tick end) {
-  static std::vector<std::tuple<std::string, uint64_t>> IOinfos;
+  static std::vector<std::tuple<TensorId, uint64_t>> IOinfos;
   IOinfos.clear();
   uint64_t nodeId = node->id();
   if (!node->has_other_attr("inputs"))
@@ -37,7 +38,7 @@ void LocalMemUsageTracker::recordReads(
   auto inputsAttr = node->get_other_attr("inputs");
   this->parseIOInfos(inputsAttr, IOinfos);
   for (auto iter : IOinfos) {
-    std::string tensorName = std::get<0>(iter);
+    TensorId tensorName = std::get<0>(iter);
     uint64_t tensorSize = std::get<1>(iter);
     MemActivity readActivity;
     readActivity.start = start;
@@ -60,7 +61,7 @@ void LocalMemUsageTracker::recordReads(
       this->memWrites.insert({tensorName, writeActivity});
     }
     if (this->memReads.find(tensorName) == this->memReads.end())
-      this->memReads.emplace(tensorName, std::deque<MemActivity>());
+      this->memReads.emplace(tensorName, std::vector<MemActivity>());
     Logger::getLogger("workload::LocalMemUsageTracker")
         ->trace(
             "tracker record read node.id={} tensor.name={} start={} end={}",
@@ -76,7 +77,7 @@ void LocalMemUsageTracker::recordWrites(
     const std::shared_ptr<Chakra::ETFeederNode> node,
     Tick start,
     Tick end) {
-  static std::vector<std::tuple<std::string, uint64_t>> IOinfos;
+  static std::vector<std::tuple<TensorId, uint64_t>> IOinfos;
   IOinfos.clear();
   uint64_t nodeId = node->id();
   if (!node->has_other_attr("outputs"))
@@ -86,7 +87,7 @@ void LocalMemUsageTracker::recordWrites(
   auto outputsAttr = node->get_other_attr("outputs");
   this->parseIOInfos(outputsAttr, IOinfos);
   for (auto iter : IOinfos) {
-    std::string tensorName = std::get<0>(iter);
+    TensorId tensorName = std::get<0>(iter);
     uint64_t tensorSize = std::get<1>(iter);
     MemActivity writeActivity;
     writeActivity.start = start;
@@ -137,98 +138,86 @@ void LocalMemUsageTracker::recordEnd(
 }
 
 void LocalMemUsageTracker::buildMemoryTrace() {
-  std::unordered_map<std::string, uint64_t> tensorMapId;
-  uint64_t id_cnt = 0ul;
+  this->tensorMapId.clear();
+  uint64_t idCnt = 0ul;
   for (const auto& item : tensorSize) {
-    const std::string& tensorName = item.first;
-    uint64_t id = id_cnt++;
+    const TensorId& tensorName = item.first;
+    uint64_t id = idCnt++;
     tensorMapId.insert(std::make_pair(tensorName, id));
   }
   this->serializedMemoryTrace.clear();
   for (const auto& item : tensorMapId) {
-    const std::string& tensorName = item.first;
+    const TensorId& tensorName = item.first;
     if (this->memReads.find(tensorName) == this->memReads.end())
       continue;
     for (const auto& readActivity : this->memReads.at(tensorName)) {
-      std::string node_name = "None";
-      uint64_t node_id = UINT64_MAX;
-      if (readActivity.node!=nullptr) {
-        node_name = readActivity.node->name();
-        node_id = readActivity.node->id();
+      std::string nodeName = "UNDEFINED";
+      uint64_t nodeId = UINT64_MAX;
+      if (readActivity.node != nullptr) {
+        nodeName = readActivity.node->name();
+        nodeId = readActivity.node->id();
       }
       json objStart = {
           {"name", tensorName},
           {"cat", "tensorRead"},
           {"ph", "B"},
-          {"ts", 1e-3*readActivity.start},
+          {"ts", 1e-3 * readActivity.start},
           {"pid", this->sysId},
           {"tid", tensorMapId.at(tensorName)},
           {"args",
-           json {
+           json{
                {"size", this->tensorSize.at(tensorName)},
-               {"node_name", node_name},
-               {"node_id", node_id}
-               }
-          }
-      };
+               {"node_name", nodeName},
+               {"node_id", nodeId}}}};
       json objEnd = {
           {"name", tensorName},
           {"cat", "tensorRead"},
           {"ph", "E"},
-          {"ts", 1e-3*readActivity.end},
+          {"ts", 1e-3 * readActivity.end},
           {"pid", this->sysId},
           {"tid", tensorMapId.at(tensorName)},
           {"args",
-           json {
+           json{
                {"size", this->tensorSize.at(tensorName)},
-               {"node_name", node_name},
-               {"node_id", node_id}
-           }
-          }
-      };
+               {"node_name", nodeName},
+               {"node_id", nodeId}}}};
       this->serializedMemoryTrace.push_back(std::move(objStart));
       this->serializedMemoryTrace.push_back(std::move(objEnd));
     }
   }
   for (const auto& item : tensorMapId) {
-    const std::string& tensorName = item.first;
+    const TensorId& tensorName = item.first;
     auto writeActivity = this->memWrites.at(tensorName);
-    std::string node_name = "None";
-    uint64_t node_id = UINT64_MAX;
-    if (writeActivity.node!=nullptr) {
-      node_name = writeActivity.node->name();
-      node_id = writeActivity.node->id();
+    std::string nodeName = "UNDEFINED";
+    uint64_t nodeId = UINT64_MAX;
+    if (writeActivity.node != nullptr) {
+      nodeName = writeActivity.node->name();
+      nodeId = writeActivity.node->id();
     }
     json objStart = {
         {"name", tensorName},
         {"cat", "tensorWrite"},
         {"ph", "B"},
-        {"ts", 1e-3*writeActivity.start},
+        {"ts", 1e-3 * writeActivity.start},
         {"pid", this->sysId},
         {"tid", tensorMapId.at(tensorName)},
         {"args",
-         json {
+         json{
              {"size", this->tensorSize.at(tensorName)},
-             {"node_name", node_name},
-             {"node_id", node_id}
-         }
-        }
-    };
+             {"node_name", nodeName},
+             {"node_id", nodeId}}}};
     json objEnd = {
         {"name", tensorName},
         {"cat", "tensorWrite"},
         {"ph", "E"},
-        {"ts", 1e-3*writeActivity.end},
+        {"ts", 1e-3 * writeActivity.end},
         {"pid", this->sysId},
         {"tid", tensorMapId.at(tensorName)},
         {"args",
-         json {
+         json{
              {"size", this->tensorSize.at(tensorName)},
-             {"node_name", node_name},
-             {"node_id", node_id}
-         }
-        }
-    };
+             {"node_name", nodeName},
+             {"node_id", nodeId}}}};
     this->serializedMemoryTrace.push_back(std::move(objStart));
     this->serializedMemoryTrace.push_back(std::move(objEnd));
   }
@@ -245,4 +234,80 @@ void LocalMemUsageTracker::dumpMemoryTrace(const std::string& filename) {
   trace["traceEvents"] = this->serializedMemoryTrace;
   file << trace.dump(2);
   file.close();
+}
+
+void LocalMemUsageTracker::buildMemoryTimeline() {
+  std::set<Tick> ticks;
+  std::map<Tick, std::vector<TensorId>> tensorWrites;
+  std::map<Tick, std::vector<TensorId>> tensorLastReads;
+  for (const auto& item : this->memWrites) {
+    const TensorId& tensorName = item.first;
+    const MemActivity& writeActivity = item.second;
+    ticks.insert(writeActivity.start);
+    if (tensorWrites.find(writeActivity.start) == tensorWrites.end())
+      tensorWrites[writeActivity.start] = std::vector<TensorId>();
+    tensorWrites[writeActivity.start].push_back(tensorName);
+    json tensorWriteEvent = {
+        {"name", tensorName},
+        {"cat", "tensorLifetime"},
+        {"ph", "B"},
+        {"ts", 1e-3 * writeActivity.start},
+        {"pid", this->sysId + 1000000ul},
+        {"tid", this->tensorMapId.at(tensorName)},
+        {"args", json{{"size", this->tensorSize.at(tensorName)}}}};
+    this->serializedMemoryTrace.push_back(std::move(tensorWriteEvent));
+  }
+  for (const auto& item : this->memReads) {
+    const TensorId& tensorName = item.first;
+    const MemActivity& latestReadActivity = item.second.back();
+    ticks.insert(latestReadActivity.end);
+    if (tensorLastReads.find(latestReadActivity.end) == tensorLastReads.end())
+      tensorLastReads[latestReadActivity.end] = std::vector<TensorId>();
+    tensorLastReads[latestReadActivity.end].push_back(tensorName);
+    json tensorLastReadEvent = {
+        {"name", tensorName},
+        {"cat", "tensorLifetime"},
+        {"ph", "E"},
+        {"ts", 1e-3 * latestReadActivity.end},
+        {"pid", this->sysId + 1000000ul},
+        {"tid", this->tensorMapId.at(tensorName)},
+        {"args", json{{"size", this->tensorSize.at(tensorName)}}}};
+    this->serializedMemoryTrace.push_back(std::move(tensorLastReadEvent));
+  }
+  for (auto it = ticks.begin(); it != ticks.end(); it++) {
+    if (it != ticks.begin()) {
+      auto prevIt = std::prev(it);
+      this->memoryContents.emplace(*it, this->memoryContents.at(*prevIt));
+    } else {
+      this->memoryContents.emplace(*it, std::unordered_set<TensorId>());
+    }
+
+    if (tensorWrites.find(*it) != tensorWrites.end())
+      for (const auto& tensorName : tensorWrites.at(*it))
+        this->memoryContents.at(*it).insert(tensorName);
+
+    if (tensorLastReads.find(*it) != tensorLastReads.end())
+      for (const auto& tensorName : tensorLastReads.at(*it))
+        this->memoryContents.at(*it).erase(tensorName);
+
+    uint64_t totalSizeBytes = 0ul;
+    for (const auto& tensorName : this->memoryContents.at(*it))
+      totalSizeBytes += this->tensorSize.at(tensorName);
+    json memoryTimelineEvent = {
+        {"name", "memoryContents"},
+        {"cat", "memoryContents"},
+        {"ph", "I"},
+        {"ts", 1e-3 * (*it)},
+        {"pid", this->sysId + 2000000ul},
+        {"args", json{{"Memory", totalSizeBytes}}}};
+    this->serializedMemoryTrace.push_back(std::move(memoryTimelineEvent));
+    this->memoryUsage.insert(std::make_pair(*it, totalSizeBytes));
+  }
+}
+
+uint64_t LocalMemUsageTracker::getPeakMemUsage() const {
+  uint64_t peakMemUsage = 0ul;
+  for (const auto& item : this->memoryUsage)
+    peakMemUsage = std::max(peakMemUsage, item.second);
+  return peakMemUsage;
 }

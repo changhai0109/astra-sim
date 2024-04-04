@@ -499,7 +499,11 @@ void Workload::report() {
       ->info("sys[{}] finished, {} cycles", sys->id, curr_tick);
   if (this->sys->track_local_mem) {
     this->local_mem_usage_tracker->buildMemoryTrace();
+    this->local_mem_usage_tracker->buildMemoryTimeline();
     this->local_mem_usage_tracker->dumpMemoryTrace(
         "local_mem_usage_trace." + to_string(sys->id) + ".json");
+    uint64_t peak_mem_usage = this->local_mem_usage_tracker->getPeakMemUsage();
+    Logger::getLogger("workload")
+        ->info("sys[{}] peak memory usage: {} bytes", sys->id, peak_mem_usage);
   }
 }
