@@ -17,7 +17,6 @@ LICENSE file in the root directory of this source tree.
 #include <stdlib.h>
 #include <unistd.h>
 #include <iostream>
-#include <locale>
 #include "fmt/format.h"
 
 using namespace std;
@@ -131,7 +130,6 @@ void Workload::issue(shared_ptr<Chakra::ETFeederNode> node) {
   if (sys->trace_enabled) {
     Logger::getLogger("workload")
         ->debug(fmt::format(
-            std::locale("en_US.UTF-8"),
             "issue,sys->id={},tick={:L},node->id={},node->name={},node_type={}",
             sys->id,
             Sys::boostedTick(),
@@ -425,7 +423,6 @@ void Workload::call(EventType event, CallData* data) {
     if (sys->trace_enabled) {
       Logger::getLogger("workload")
           ->debug(fmt::format(
-              std::locale("en_US.UTF-8"),
               "callback,sys->id={},tick={:L},node->id={},node->name={},node_type={}",
               sys->id,
               Sys::boostedTick(),
@@ -471,7 +468,6 @@ void Workload::call(EventType event, CallData* data) {
       if (sys->trace_enabled) {
         Logger::getLogger("workload")
             ->debug(fmt::format(
-                std::locale("en_US.UTF-8"),
                 "callback,sys->id={},tick={:L},node->id={},node->name={},node_type={}",
                 sys->id,
                 Sys::boostedTick(),
@@ -510,11 +506,7 @@ void Workload::fire() {
 void Workload::report() {
   Tick curr_tick = Sys::boostedTick();
   Logger::getLogger("workload")
-      ->info(fmt::format(
-          std::locale("en_US.UTF-8"),
-          "sys[{}] finished, {:L} cycles",
-          sys->id,
-          curr_tick));
+      ->info(fmt::format("sys[{}] finished, {:L} cycles", sys->id, curr_tick));
   if (this->sys->track_local_mem) {
     this->local_mem_usage_tracker->buildMemoryTrace();
     this->local_mem_usage_tracker->buildMemoryTimeline();
@@ -523,10 +515,7 @@ void Workload::report() {
     uint64_t peak_mem_usage = this->local_mem_usage_tracker->getPeakMemUsage();
     Logger::getLogger("workload")
         ->info(fmt::format(
-            std::locale("en_US.UTF-8"),
-            "sys[{}] peak memory usage: {:L} bytes",
-            sys->id,
-            peak_mem_usage));
+            "sys[{}] peak memory usage: {:L} bytes", sys->id, peak_mem_usage));
     this->local_mem_usage_tracker.reset();
   }
 }
