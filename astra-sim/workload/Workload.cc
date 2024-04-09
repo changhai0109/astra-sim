@@ -527,5 +527,6 @@ void Workload::report() {
             "sys[{}] peak memory usage: {:L} bytes",
             sys->id,
             peak_mem_usage));
+    this->local_mem_usage_tracker.reset();
   }
 }

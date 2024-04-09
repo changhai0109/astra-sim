@@ -224,7 +224,8 @@ void LocalMemUsageTracker::buildMemoryTrace() {
 }
 
 void LocalMemUsageTracker::dumpMemoryTrace(const std::string& filename) {
-  std::string local_mem_trace_filename = fmt::format(filename+".{}.json", this->sysId);
+  std::string local_mem_trace_filename =
+      fmt::format(filename + ".{}.json", this->sysId);
   std::ofstream file(local_mem_trace_filename);
   if (!file.is_open()) {
     Logger::getLogger("workload::LocalMemUsageTracker")
@@ -238,6 +239,9 @@ void LocalMemUsageTracker::dumpMemoryTrace(const std::string& filename) {
 }
 
 void LocalMemUsageTracker::buildMemoryTimeline() {
+  this->serializedMemoryTrace.clear();
+  this->memoryContents.clear();
+  this->memoryUsage.clear();
   std::set<Tick> ticks;
   std::map<Tick, std::vector<TensorId>> tensorWrites;
   std::map<Tick, std::vector<TensorId>> tensorLastReads;
@@ -304,6 +308,9 @@ void LocalMemUsageTracker::buildMemoryTimeline() {
     this->serializedMemoryTrace.push_back(std::move(memoryTimelineEvent));
     this->memoryUsage.insert(std::make_pair(*it, totalSizeBytes));
   }
+  ticks.clear();
+  tensorWrites.clear();
+  tensorLastReads.clear();
 }
 
 uint64_t LocalMemUsageTracker::getPeakMemUsage() const {
@@ -311,4 +318,15 @@ uint64_t LocalMemUsageTracker::getPeakMemUsage() const {
   for (const auto& item : this->memoryUsage)
     peakMemUsage = std::max(peakMemUsage, item.second);
   return peakMemUsage;
+}
+
+LocalMemUsageTracker::~LocalMemUsageTracker() {
+  this->memReads.clear();
+  this->memWrites.clear();
+  this->tensorSize.clear();
+  this->activityStartTime.clear();
+  this->serializedMemoryTrace.clear();
+  this->memoryContents.clear();
+  this->memoryUsage.clear();
+  this->tensorMapId.clear();
 }

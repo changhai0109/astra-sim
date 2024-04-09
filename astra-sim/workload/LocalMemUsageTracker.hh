@@ -25,6 +25,7 @@ typedef std::string TensorId;
 class LocalMemUsageTracker {
  public:
   LocalMemUsageTracker(uint64_t sysId) : sysId(sysId){};
+  ~LocalMemUsageTracker();
   void recordStart(const std::shared_ptr<Chakra::ETFeederNode> node, Tick tick);
   void recordEnd(const std::shared_ptr<Chakra::ETFeederNode> node, Tick tick);
   void buildMemoryTrace();
