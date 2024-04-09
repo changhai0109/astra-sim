@@ -16,8 +16,8 @@ uint64_t LocalMemUsageTracker::parseIOInfos(
   assert(attr.string_list().values().size() % 2 == 0);
   uint64_t parsedCnt = 0ul;
   for (int32_t i = 0; i < attr.string_list().values().size(); i += 2) {
-    TensorId name = attr.string_list().values().at(i);
-    std::string sizeStr = attr.string_list().values().at(i + 1);
+    TensorId name = attr.string_list().values()[i];
+    std::string sizeStr = attr.string_list().values()[i + 1];
     uint64_t size = std::stoull(sizeStr);
     IOinfos.push_back(std::make_tuple(name, size));
     parsedCnt++;
