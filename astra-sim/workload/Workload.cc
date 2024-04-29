@@ -45,7 +45,12 @@ Workload::Workload(Sys* sys, string et_filename, string comm_group_filename) {
     Logger::getLogger("workload")->critical(error_msg);
     exit(EXIT_FAILURE);
   }
+  Logger::getLogger("workload")
+      ->info("sys[{}] start loading workloads", sys->id);
+  // this->et_feeder = new DatabaseETFeeder(workload_filename);
   this->et_feeder = new ETFeeder(workload_filename);
+  Logger::getLogger("workload")
+      ->info("sys[{}] finish loading workloads", sys->id);
   // TODO: parametrize the number of available hardware resources
   this->hw_resource = new HardwareResource(1);
   this->local_mem_usage_tracker =

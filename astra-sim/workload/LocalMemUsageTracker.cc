@@ -43,7 +43,8 @@ void LocalMemUsageTracker::recordReads(
     MemActivity readActivity;
     readActivity.start = start;
     readActivity.end = end;
-    readActivity.node = node;
+    readActivity.nodeName = node->name();
+    readActivity.nodeId = node->id();
     if (this->tensorSize.find(tensorName) == this->tensorSize.end()) {
       // TODO: read before write, for now assuming it exist from start.
       Logger::getLogger("workload::LocalMemUsageTracker")
@@ -56,7 +57,8 @@ void LocalMemUsageTracker::recordReads(
       MemActivity writeActivity;
       writeActivity.start = 0ul;
       writeActivity.end = 10ul;
-      writeActivity.node = nullptr;
+      writeActivity.nodeName = "UNDEFINED";
+      writeActivity.nodeId = UINT64_MAX;
       this->tensorSize.insert({tensorName, tensorSize});
       this->memWrites.insert({tensorName, writeActivity});
     }
@@ -92,7 +94,8 @@ void LocalMemUsageTracker::recordWrites(
     MemActivity writeActivity;
     writeActivity.start = start;
     writeActivity.end = end;
-    writeActivity.node = node;
+    writeActivity.nodeName = node->name();
+    writeActivity.nodeId = node->id();
     Logger::getLogger("workload::LocalMemUsageTracker")
         ->trace(
             "tracker record write node.id={} tensor.name={} start={} end={}",
@@ -125,6 +128,9 @@ void LocalMemUsageTracker::recordStart(
 void LocalMemUsageTracker::recordEnd(
     const std::shared_ptr<Chakra::ETFeederNode> node,
     Tick tick) {
+  if (this->activityStartTime.find(node) == this->activityStartTime.end())
+    // if that goes there, probably double end record.
+    return;
   Tick start = this->activityStartTime.at(node);
   Tick end = tick;
   Logger::getLogger("workload::LocalMemUsageTracker")
@@ -135,6 +141,7 @@ void LocalMemUsageTracker::recordEnd(
           end);
   this->recordReads(node, start, end);
   this->recordWrites(node, start, end);
+  this->activityStartTime.erase(node);
 }
 
 void LocalMemUsageTracker::buildMemoryTrace() {
@@ -151,12 +158,8 @@ void LocalMemUsageTracker::buildMemoryTrace() {
     if (this->memReads.find(tensorName) == this->memReads.end())
       continue;
     for (const auto& readActivity : this->memReads.at(tensorName)) {
-      std::string nodeName = "UNDEFINED";
-      uint64_t nodeId = UINT64_MAX;
-      if (readActivity.node != nullptr) {
-        nodeName = readActivity.node->name();
-        nodeId = readActivity.node->id();
-      }
+      std::string nodeName = readActivity.nodeName;
+      uint64_t nodeId = readActivity.nodeId;
       json objStart = {
           {"name", tensorName},
           {"cat", "tensorRead"},
@@ -188,12 +191,8 @@ void LocalMemUsageTracker::buildMemoryTrace() {
   for (const auto& item : tensorMapId) {
     const TensorId& tensorName = item.first;
     auto writeActivity = this->memWrites.at(tensorName);
-    std::string nodeName = "UNDEFINED";
-    uint64_t nodeId = UINT64_MAX;
-    if (writeActivity.node != nullptr) {
-      nodeName = writeActivity.node->name();
-      nodeId = writeActivity.node->id();
-    }
+    std::string nodeName = writeActivity.nodeName;
+    uint64_t nodeId = writeActivity.nodeId;
     json objStart = {
         {"name", tensorName},
         {"cat", "tensorWrite"},
@@ -239,7 +238,7 @@ void LocalMemUsageTracker::dumpMemoryTrace(const std::string& filename) {
 }
 
 void LocalMemUsageTracker::buildMemoryTimeline() {
-  this->serializedMemoryTrace.clear();
+  // this->serializedMemoryTrace.clear();
   this->memoryContents.clear();
   this->memoryUsage.clear();
   std::set<Tick> ticks;

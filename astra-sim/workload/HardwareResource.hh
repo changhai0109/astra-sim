@@ -26,6 +26,10 @@ class HardwareResource {
   uint32_t num_in_flight_gpu_comp_ops;
   uint32_t num_in_flight_comm_ops;
   uint32_t num_in_flight_mem_ops;
+  std::unordered_set<uint64_t> in_flight_cpu_comp_ops;
+  std::unordered_set<uint64_t> in_flight_gpu_comp_ops;
+  std::unordered_set<uint64_t> in_flight_comm_ops;
+  std::unordered_set<uint64_t> in_flight_mem_ops;
 };
 
 } // namespace AstraSim

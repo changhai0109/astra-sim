@@ -17,7 +17,8 @@ namespace AstraSim {
 typedef struct {
   Tick start;
   Tick end;
-  std::shared_ptr<Chakra::ETFeederNode> node;
+  std::string nodeName;
+  uint64_t nodeId;
 } MemActivity;
 
 typedef std::string TensorId;
