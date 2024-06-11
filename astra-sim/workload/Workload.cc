@@ -6,6 +6,7 @@ LICENSE file in the root directory of this source tree.
 #include "astra-sim/workload/Workload.hh"
 
 #include <json/json.hpp>
+#include "astra-sim/common/Logging.hh"
 #include "astra-sim/system/IntData.hh"
 #include "astra-sim/system/MemEventHandlerData.hh"
 #include "astra-sim/system/RecvPacketEventHandlerData.hh"
@@ -38,7 +39,7 @@ Workload::Workload(Sys* sys, string et_filename, string comm_group_filename) {
       error_msg =
           "Unknown workload file: " + workload_filename + " access error";
     }
-    cerr << error_msg << endl;
+    LoggerFactory::get_logger("workload")->critical(error_msg);
     exit(EXIT_FAILURE);
   }
   this->et_feeder = new ETFeeder(workload_filename);
@@ -112,43 +113,40 @@ void Workload::issue_dep_free_nodes() {
 }
 
 void Workload::issue(shared_ptr<Chakra::ETFeederNode> node) {
-  if (sys->trace_enabled) {
-    cout << "issue,sys->id=" << sys->id << ",tick=" << Sys::boostedTick()
-               << ",node->id=" << node->id() << ",node->name=" << node->name()
-               << endl;
-  }
+  auto logger = LoggerFactory::get_logger("workload");
+  hw_resource->occupy(node);
   if (sys->replay_only) {
-    hw_resource->occupy(node);
     issue_replay(node);
-    return;
-  } 
-    
-  if ((node->type() == ChakraNodeType::MEM_LOAD_NODE) ||
+  } else if (
+      (node->type() == ChakraNodeType::MEM_LOAD_NODE) ||
       (node->type() == ChakraNodeType::MEM_STORE_NODE)) {
-      issue_remote_mem(node);
-  } 
-  else if (
-    node->type() == ChakraNodeType::COMP_NODE
-  ) {
-    if (node->is_cpu_op()) 
+    issue_remote_mem(node);
+  } else if (node->type() == ChakraNodeType::COMP_NODE) {
+    if (node->is_cpu_op())
       issue_comp_cpu(node);
-    else 
+    else
       issue_comp_gpu(node);
-  }
-  else if (
-    node->type() == ChakraNodeType::COMM_COLL_NODE ||
-    node->type() == ChakraNodeType::COMM_SEND_NODE ||
-    node->type() == ChakraNodeType::COMM_RECV_NODE
-  ) {
+  } else if (
+      node->type() == ChakraNodeType::COMM_COLL_NODE ||
+      node->type() == ChakraNodeType::COMM_SEND_NODE ||
+      node->type() == ChakraNodeType::COMM_RECV_NODE) {
     issue_comm(node);
-  }
-  else if (node->type() == ChakraNodeType::INVALID_NODE) {
+  } else if (node->type() == ChakraNodeType::INVALID_NODE) {
     skip_invalid(node);
-  }
-  else {
-    cerr << "invalid node type. sys->id=" << this->sys->id << " ,node->id=" << node->id() << endl;
+  } else {
+    logger->critical(
+        "invalid node type. sys->id={}, node->id={} ",
+        this->sys->id,
+        node->id());
     exit(-1);
   }
+  logger->debug(
+      "issue,sys->id={}, tick={}, node->id={}, node->name={}, node->type={}",
+      sys->id,
+      Sys::boostedTick(),
+      node->id(),
+      node->name(),
+      static_cast<uint64_t>(node->type()));
 }
 
 void Workload::issue_replay(shared_ptr<Chakra::ETFeederNode> node) {
@@ -163,8 +161,6 @@ void Workload::issue_replay(shared_ptr<Chakra::ETFeederNode> node) {
 }
 
 void Workload::issue_remote_mem(shared_ptr<Chakra::ETFeederNode> node) {
-  hw_resource->occupy(node);
-
   WorkloadLayerHandlerData* wlhd = new WorkloadLayerHandlerData;
   wlhd->sys_id = sys->id;
   wlhd->workload = this;
@@ -173,8 +169,6 @@ void Workload::issue_remote_mem(shared_ptr<Chakra::ETFeederNode> node) {
 }
 
 void Workload::issue_comp_cpu(shared_ptr<Chakra::ETFeederNode> node) {
-  hw_resource->occupy(node);
-
   if (sys->roofline_enabled) {
     WorkloadLayerHandlerData* wlhd = new WorkloadLayerHandlerData;
     wlhd->node_id = node->id();
@@ -193,10 +187,10 @@ void Workload::issue_comp_cpu(shared_ptr<Chakra::ETFeederNode> node) {
 }
 
 void Workload::issue_comp_gpu(shared_ptr<Chakra::ETFeederNode> node) {
-  hw_resource->occupy(node);
-
   if (sys->roofline_enabled) {
-    cerr << "roofline model for gpu is not implemented for now, change type to cpu" << endl;
+    cerr
+        << "roofline model for gpu is not implemented for now, change type to cpu"
+        << endl;
     exit(-1);
   } else {
     // advance this node forward the recorded "replayed" time specificed in the
@@ -206,8 +200,6 @@ void Workload::issue_comp_gpu(shared_ptr<Chakra::ETFeederNode> node) {
 }
 
 void Workload::issue_comm(shared_ptr<Chakra::ETFeederNode> node) {
-  hw_resource->occupy(node);
-
   vector<bool> involved_dim;
   for (int i = 0; i < node->involved_dim_size(); i++) {
     involved_dim.push_back(node->involved_dim(i));
@@ -301,7 +293,8 @@ void Workload::issue_comm(shared_ptr<Chakra::ETFeederNode> node) {
         &Sys::handleEvent,
         rcehd);
   } else {
-    cerr << "Unknown communication node type" << endl;
+    LoggerFactory::get_logger("workload")
+        ->critical("Unknown communication node type");
     exit(EXIT_FAILURE);
   }
 }
@@ -322,9 +315,14 @@ void Workload::call(EventType event, CallData* data) {
     shared_ptr<Chakra::ETFeederNode> node = et_feeder->lookupNode(node_id);
 
     if (sys->trace_enabled) {
-      cout << "callback,sys->id=" << sys->id << ",tick=" << Sys::boostedTick()
-           << ",node->id=" << node->id() << ",node->name=" << node->name()
-           << endl;
+      LoggerFactory::get_logger("workload")
+          ->debug(
+              "callback,sys->id={}, tick={}, node->id={}, node->name={}, node->type={}",
+              sys->id,
+              Sys::boostedTick(),
+              node->id(),
+              node->name(),
+              static_cast<uint64_t>(node->type()));
     }
 
     hw_resource->release(node);
@@ -349,9 +347,14 @@ void Workload::call(EventType event, CallData* data) {
           et_feeder->lookupNode(wlhd->node_id);
 
       if (sys->trace_enabled) {
-        cout << "callback,sys->id=" << sys->id << ",tick=" << Sys::boostedTick()
-             << ",node->id=" << node->id() << ",node->name=" << node->name()
-             << endl;
+        LoggerFactory::get_logger("workload")
+            ->debug(
+                "callback,sys->id={}, tick={}, node->id={}, node->name={}, node->type={}",
+                sys->id,
+                Sys::boostedTick(),
+                node->id(),
+                node->name(),
+                static_cast<uint64_t>(node->type()));
       }
 
       hw_resource->release(node);
@@ -378,5 +381,6 @@ void Workload::fire() {
 
 void Workload::report() {
   Tick curr_tick = Sys::boostedTick();
-  cout << "sys[" << sys->id << "] finished, " << curr_tick << " cycles" << endl;
+  LoggerFactory::get_logger("workload")
+      ->info("sys[{}] finished, {} cycles", sys->id, curr_tick);
 }
