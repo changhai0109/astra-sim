@@ -12,6 +12,7 @@ LICENSE file in the root directory of this source tree.
 #include "astra-sim/system/RecvPacketEventHandlerData.hh"
 #include "astra-sim/system/SendPacketEventHandlerData.hh"
 #include "astra-sim/system/WorkloadLayerHandlerData.hh"
+#include "astra-sim/workload/LocalMemoryTracker.hh"
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -49,6 +50,7 @@ Workload::Workload(Sys* sys, string et_filename, string comm_group_filename) {
   this->sys = sys;
   initialize_comm_group(comm_group_filename);
   this->is_finished = false;
+  this->local_memory_tracker = new LocalMemoryTracker(this, false);
 }
 
 Workload::~Workload() {
@@ -114,6 +116,7 @@ void Workload::issue_dep_free_nodes() {
 
 void Workload::issue(shared_ptr<Chakra::ETFeederNode> node) {
   auto logger = LoggerFactory::get_logger("workload");
+  this->local_memory_tracker->issueNode(this->et_feeder, node);
   hw_resource->occupy(node);
   if (sys->replay_only) {
     issue_replay(node);
@@ -330,7 +333,7 @@ void Workload::call(EventType event, CallData* data) {
     et_feeder->freeChildrenNodes(node_id);
 
     issue_dep_free_nodes();
-
+    this->local_memory_tracker->finishedNode(this->et_feeder, node);
     et_feeder->removeNode(node_id);
 
     // The Dataset class provides statistics that should be used later to dump
@@ -362,7 +365,7 @@ void Workload::call(EventType event, CallData* data) {
       et_feeder->freeChildrenNodes(node->id());
 
       issue_dep_free_nodes();
-
+      this->local_memory_tracker->finishedNode(this->et_feeder, node);
       et_feeder->removeNode(wlhd->node_id);
       delete wlhd;
     }
@@ -383,4 +386,5 @@ void Workload::report() {
   Tick curr_tick = Sys::boostedTick();
   LoggerFactory::get_logger("workload")
       ->info("sys[{}] finished, {} cycles", sys->id, curr_tick);
+  this->local_memory_tracker->report("");
 }
