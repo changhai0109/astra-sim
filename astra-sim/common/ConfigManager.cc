@@ -1,4 +1,4 @@
-#include "astra-sim/common/configs/ConfigManager.hh"
+#include "astra-sim/common/ConfigManager.hh"
 
 #include <cstdlib>
 #include <fstream>
