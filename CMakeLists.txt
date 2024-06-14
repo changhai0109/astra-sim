@@ -14,9 +14,19 @@ endif ()
 project(AstraSim)
 
 # Add libraries.
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/extern/helper/fmt")
-option(SPDLOG_FMT_EXTERNAL ON)    # override default option for spdlog.
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/extern/helper/spdlog")
+if(NOT TARGET fmt::fmt)
+    add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/extern/helper/fmt")
+endif()
+
+if(NOT TARGET spdlog::spdlog)
+    option(SPDLOG_FMT_EXTERNAL ON)    # override default option for spdlog.
+    add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/extern/helper/spdlog")
+endif()
+
+if(NOT TARGET yaml-cpp::yaml-cpp)
+    # conflict with yaml-cpp in analytical network backend. Need to resolve later.
+    # add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/extern/helper/yaml-cpp")
+endif()
 find_package(Protobuf REQUIRED)
 
 # Files to compile
@@ -40,6 +50,7 @@ add_library(AstraSim STATIC ${srcs})
 target_link_libraries(AstraSim PUBLIC ${Protobuf_LIBRARIES})
 target_link_libraries(AstraSim PUBLIC fmt::fmt)
 target_link_libraries(AstraSim PUBLIC spdlog::spdlog)
+target_link_libraries(AstraSim PUBLIC yaml-cpp::yaml-cpp)
 
 # Include Directories
 target_include_directories(AstraSim PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
