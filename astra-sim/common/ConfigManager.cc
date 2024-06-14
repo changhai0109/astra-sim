@@ -135,3 +135,12 @@ ConfigManager::ConfigManager(json config) {
 const json& ConfigManager::getRawJson() const {
   return this->config;
 }
+
+const bool ConfigManager::contains(const std::string& name) const {
+  auto pos = name.rfind(".");
+  if (pos == name.npos) {
+    return this->config.contains(name);
+  }
+  auto subConfig = this->getSubScope(name.substr(0, pos));
+  return subConfig.contains(name.substr(pos + 1));
+}
