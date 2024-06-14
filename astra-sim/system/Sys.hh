@@ -76,7 +76,7 @@ class Sys : public Callable {
   //---------------------------------------------------------------------------
 
   // Intialization ------------------------------------------------------------
-  bool initialize_sys(std::string name);
+  void initialize_sys();
   CollectiveImpl* generate_collective_impl_from_input(
       std::string collective_impl_str);
   //---------------------------------------------------------------------------

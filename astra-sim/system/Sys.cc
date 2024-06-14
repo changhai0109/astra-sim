@@ -9,6 +9,7 @@ LICENSE file in the root directory of this source tree.
 #include <iostream>
 
 #include <json/json.hpp>
+#include "astra-sim/common/ConfigManager.hh"
 #include "astra-sim/common/Logging.hh"
 #include "astra-sim/system/BaseStream.hh"
 #include "astra-sim/system/CollectivePlan.hh"
@@ -199,10 +200,7 @@ Sys::Sys(
   this->communication_delay = 10;
   this->local_reduction_delay = 1;
 
-  if (initialize_sys(system_configuration) == false) {
-    sys_panic(
-        "Unable to initialize the system layer because the file can not be openned");
-  }
+  initialize_sys();
 
   // scheduler
   this->physical_dims = physical_dims;
@@ -331,140 +329,90 @@ Sys::~Sys() {
   }
 }
 
-bool Sys::initialize_sys(string name) {
-  ifstream inFile;
-  inFile.open(name);
-  if (!inFile) {
-    if (id == 0) {
-      LoggerFactory::get_logger("system")->critical(
-          "Unable to open file: {}", name);
-    }
-    exit(1);
-  }
+void Sys::initialize_sys() {
+  auto configManager = ConfigManager::getInstance()->getSubScope("system");
 
-  json j;
-  inFile >> j;
-  if (j.contains("scheduling-policy")) {
-    string inp_scheduling_policy = j["scheduling-policy"];
-    if (inp_scheduling_policy == "LIFO") {
-      this->scheduling_policy = SchedulingPolicy::LIFO;
-    } else if (inp_scheduling_policy == "FIFO") {
-      this->scheduling_policy = SchedulingPolicy::FIFO;
-    } else if (inp_scheduling_policy == "EXPLICIT") {
-      this->scheduling_policy = SchedulingPolicy::EXPLICIT;
-    } else {
-      sys_panic("unknown value for scheduling policy in sys input file");
-    }
-  }
-  if (j.contains("all-reduce-implementation")) {
-    vector<string> collective_impl_str_vec = j["all-reduce-implementation"];
-    for (auto collective_impl_str : collective_impl_str_vec) {
-      CollectiveImpl* ci =
-          generate_collective_impl_from_input(collective_impl_str);
-      all_reduce_implementation_per_dimension.push_back(ci);
-    }
-  }
-  if (j.contains("reduce-scatter-implementation")) {
-    vector<string> collective_impl_str_vec = j["reduce-scatter-implementation"];
-    for (auto collective_impl_str : collective_impl_str_vec) {
-      CollectiveImpl* ci =
-          generate_collective_impl_from_input(collective_impl_str);
-      reduce_scatter_implementation_per_dimension.push_back(ci);
-    }
-  }
-  if (j.contains("all-gather-implementation")) {
-    vector<string> collective_impl_str_vec = j["all-gather-implementation"];
-    for (auto collective_impl_str : collective_impl_str_vec) {
-      CollectiveImpl* ci =
-          generate_collective_impl_from_input(collective_impl_str);
-      all_gather_implementation_per_dimension.push_back(ci);
-    }
-  }
-  if (j.contains("all-to-all-implementation")) {
-    vector<string> collective_impl_str_vec = j["all-to-all-implementation"];
-    for (auto collective_impl_str : collective_impl_str_vec) {
-      CollectiveImpl* ci =
-          generate_collective_impl_from_input(collective_impl_str);
-      all_to_all_implementation_per_dimension.push_back(ci);
-    }
-  }
-  if (j.contains("collective-optimization")) {
-    string inp_collective_optimization = j["collective-optimization"];
-    if (inp_collective_optimization == "baseline") {
-      collectiveOptimization = CollectiveOptimization::Baseline;
-    } else if (inp_collective_optimization == "localBWAware") {
-      collectiveOptimization = CollectiveOptimization::LocalBWAware;
-    } else {
-      sys_panic("unknown value for collective optimization in sys input file");
-    }
-  }
-  if (j.contains("local-reduction-delay")) {
-    local_reduction_delay = j["local-reduction-delay"];
-  }
-  if (j.contains("active-chunks-per-dimension")) {
-    active_chunks_per_dimension = j["active-chunks-per-dimension"];
-  }
-  if (j.contains("L")) {
-    inp_L = j["L"];
-  }
-  if (j.contains("o")) {
-    inp_o = j["o"];
-  }
-  if (j.contains("g")) {
-    inp_g = j["g"];
-  }
-  if (j.contains("G")) {
-    inp_G = j["G"];
-  }
-  if (j.contains("endpoint-delay")) {
-    communication_delay = j["endpoint-delay"];
-    communication_delay = communication_delay * injection_scale;
-  }
-  if (j.contains("model-shared-bus")) {
-    int inp_model_shared_bus = j["model-shared-bus"];
-    if (inp_model_shared_bus == 1) {
-      model_shared_bus = true;
-    } else {
-      model_shared_bus = false;
-    }
+  string inp_scheduling_policy = configManager.get<string>("scheduling-policy");
+
+  if (inp_scheduling_policy == "LIFO") {
+    this->scheduling_policy = SchedulingPolicy::LIFO;
+  } else if (inp_scheduling_policy == "FIFO") {
+    this->scheduling_policy = SchedulingPolicy::FIFO;
+  } else if (inp_scheduling_policy == "EXPLICIT") {
+    this->scheduling_policy = SchedulingPolicy::EXPLICIT;
   } else {
-    model_shared_bus = false;
-  }
-  if (j.contains("preferred-dataset-splits")) {
-    preferred_dataset_splits = j["preferred-dataset-splits"];
-  }
-  if (j.contains("peak-perf")) {
-    peak_perf = j["peak-perf"];
-    peak_perf = peak_perf * 1000000000000; // TFLOPS
-  }
-  if (j.contains("local-mem-bw")) {
-    local_mem_bw = j["local-mem-bw"]; // GB/sec
-  }
-  if (j.contains("roofline-enabled")) {
-    if (j["roofline-enabled"] != 0) {
-      roofline_enabled = true;
-      roofline = new Roofline(local_mem_bw, peak_perf);
-    }
-  }
-  this->trace_enabled = false;
-  if (j.contains("trace-enabled")) {
-    if (j["trace-enabled"] != 0) {
-      this->trace_enabled = true;
-    } else {
-      this->trace_enabled = false;
-    }
-  }
-  this->replay_only = false;
-  if (j.contains("replay-only")) {
-    if (j["replay-only"] != 0) {
-      this->replay_only = true;
-    } else {
-      this->replay_only = false;
-    }
+    sys_panic("unknown value for scheduling policy in sys input file");
   }
 
-  inFile.close();
-  return true;
+  vector<string> collective_impl_str_vec =
+      configManager.get<vector<string>>("all-reduce-implementation");
+  for (auto collective_impl_str : collective_impl_str_vec) {
+    CollectiveImpl* ci =
+        generate_collective_impl_from_input(collective_impl_str);
+    all_reduce_implementation_per_dimension.push_back(ci);
+  }
+
+  vector<string> collective_impl_str_vec =
+      configManager.get<vector<string>>("reduce-scatter-implementation");
+  for (auto collective_impl_str : collective_impl_str_vec) {
+    CollectiveImpl* ci =
+        generate_collective_impl_from_input(collective_impl_str);
+    reduce_scatter_implementation_per_dimension.push_back(ci);
+  }
+
+  vector<string> collective_impl_str_vec =
+      configManager.get<vector<string>>("all-gather-implementation");
+  for (auto collective_impl_str : collective_impl_str_vec) {
+    CollectiveImpl* ci =
+        generate_collective_impl_from_input(collective_impl_str);
+    all_gather_implementation_per_dimension.push_back(ci);
+  }
+
+  vector<string> collective_impl_str_vec =
+      configManager.get<vector<string>>("all-to-all-implementation");
+  for (auto collective_impl_str : collective_impl_str_vec) {
+    CollectiveImpl* ci =
+        generate_collective_impl_from_input(collective_impl_str);
+    all_to_all_implementation_per_dimension.push_back(ci);
+  }
+
+  string inp_collective_optimization =
+      configManager.get<string>("collective-optimization");
+  if (inp_collective_optimization == "baseline") {
+    collectiveOptimization = CollectiveOptimization::Baseline;
+  } else if (inp_collective_optimization == "localBWAware") {
+    collectiveOptimization = CollectiveOptimization::LocalBWAware;
+  } else {
+    sys_panic("unknown value for collective optimization in sys input file");
+  }
+
+  local_reduction_delay =
+      configManager.getOrDefault<int>("local-reduction-delay", 1);
+  active_chunks_per_dimension =
+      configManager.getOrDefault<int>("active-chunks-per-dimension", 1);
+  inp_L = configManager.getOrDefault<float>("L", 0);
+  inp_o = configManager.getOrDefault<float>("o", 0);
+  inp_g = configManager.getOrDefault<float>("g", 0);
+  inp_G = configManager.getOrDefault<float>("G", 0);
+
+  communication_delay =
+      configManager.getOrDefault<int>("endpoint-delay", 10) * injection_scale;
+  model_shared_bus =
+      configManager.getOrDefault<bool>("model-shared-bus", false);
+  preferred_dataset_splits = configManager.get<int>("preferred-dataset-splits");
+  peak_perf =
+      configManager.getOrDefault<double>("peak-perf", 0) * 1e12; // TFLOPS
+  local_mem_bw =
+      configManager.getOrDefault<double>("local-mem-bw", 0); // GB/sec
+  roofline_enabled =
+      configManager.getOrDefault<bool>("roofline-enabled", false);
+  if (roofline_enabled)
+    roofline = new Roofline(local_mem_bw, peak_perf);
+
+  this->trace_enabled =
+      configManager.getOrDefault<bool>("trace-enabled", false);
+  this->replay_only = configManager.getOrDefault<bool>("replay-only", false);
+
 }
 
 CollectiveImpl* Sys::generate_collective_impl_from_input(
