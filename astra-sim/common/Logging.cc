@@ -41,7 +41,7 @@ void LoggerFactory::init_default_components() {
   default_sinks.insert(sink_color_console);
 
   auto sink_rotate_out = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
-      "log/log.log", 1024 * 1024 * 10, 10);
+      "log/log.log", 1024 * 1024 * 300, 10);
   sink_rotate_out->set_level(spdlog::level::debug);
   default_sinks.insert(sink_rotate_out);
 
