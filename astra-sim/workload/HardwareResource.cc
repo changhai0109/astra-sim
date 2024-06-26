@@ -25,23 +25,23 @@ HardwareResource::HardwareResource(uint32_t num_npus)
 void HardwareResource::occupy(const shared_ptr<Chakra::ETFeederNode> node) {
   if (node->type() == ChakraNodeType::COMM_COLL_NODE ||
       node->type() == ChakraNodeType::COMM_SEND_NODE) {
-    assert(num_in_flight_comm_send_ops == 0);
+    assert(this->is_available(node));
     this->num_in_flight_comm_send_ops++;
   } else if (node->type() == ChakraNodeType::COMM_RECV_NODE) {
     this->num_in_flight_comm_recv_ops++;
   } else if (node->type() == ChakraNodeType::COMP_NODE) {
     if (node->is_cpu_op()) {
-      assert(num_in_flight_cpu_comp_ops == 0);
+      assert(this->is_available(node));
       this->num_in_flight_cpu_comp_ops++;
     } else {
-      assert(num_in_flight_gpu_comp_ops == 0);
+      assert(this->is_available(node));
       this->num_in_flight_gpu_comp_ops++;
     }
   } else if (node->type() == ChakraNodeType::MEM_LOAD_NODE) {
-    assert(num_in_flight_mem_load_ops == 0);
+    assert(this->is_available(node));
     this->num_in_flight_mem_load_ops++;
   } else if (node->type() == ChakraNodeType::MEM_STORE_NODE) {
-    assert(num_in_flight_mem_store_ops == 0);
+    assert(this->is_available(node));
     this->num_in_flight_mem_store_ops++;
   } else if (node->type() == ChakraNodeType::INVALID_NODE) {
     // pass
