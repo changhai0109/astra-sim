@@ -425,5 +425,6 @@ void Workload::report() {
   Tick curr_tick = Sys::boostedTick();
   LoggerFactory::get_logger("workload")
       ->info("sys[{}] finished, {} cycles", sys->id, curr_tick);
-  this->local_memory_tracker->report(this->sys->memory_report_dir);
+  if (this->local_memory_tracker != nullptr)
+    this->local_memory_tracker->report(this->sys->memory_report_dir);
 }
