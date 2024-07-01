@@ -30,16 +30,22 @@ void LocalMemoryTracker::issueNode(
   auto logger = LoggerFactory::get_logger("local-memory-tracker");
   Tick now = Sys::boostedTick();
   size_t tensorSize = node->tensor_size();
+  // because we track the allocation when "send" issued
   if (node->type() == ChakraProtoMsg::NodeType::COMM_RECV_NODE)
     return;
   this->memoryContentSize += tensorSize;
   memoryUsageTimeline.insert({now, this->memoryContentSize});
   if (this->trackMemoryActivities) {
-    MemoryActivity writeActivity = {
-        MemoryActivityType::WRITE_START, node, node, now};
-    this->memoryActivities.push_back(writeActivity);
-    MemoryActivity allocActivity = {MemoryActivityType::ALLOC, node, node, now};
-    this->memoryActivities.push_back(allocActivity);
+    // if a tensor has tensor size of 0, then means it dont really have a
+    // output.
+    if (tensorSize > 0ul) {
+      MemoryActivity writeActivity = {
+          MemoryActivityType::WRITE_START, node, node, now};
+      this->memoryActivities.push_back(writeActivity);
+      MemoryActivity allocActivity = {
+          MemoryActivityType::ALLOC, node, node, now};
+      this->memoryActivities.push_back(allocActivity);
+    }
     for (auto parentId : node->getChakraNode()->data_deps()) {
       auto parent = etFeeder->lookupNode(parentId);
       MemoryActivity readActivity = {
@@ -68,26 +74,33 @@ void LocalMemoryTracker::finishedNode(
     this->memoryContentSize += tensorSize;
     memoryUsageTimeline.insert({now, this->memoryContentSize});
     if (this->trackMemoryActivities) {
+      // offset 100 to simulate the allocation happening at "send", but not
+      // tracked due to complexity.
       MemoryActivity writeActivity = {
           MemoryActivityType::WRITE_START, node, node, now - 100};
       this->memoryActivities.push_back(writeActivity);
       MemoryActivity allocActivity = {
           MemoryActivityType::ALLOC, node, node, now - 100};
       this->memoryActivities.push_back(allocActivity);
-      for (auto parentId : node->getChakraNode()->data_deps()) {
-        auto parent = etFeeder->lookupNode(parentId);
-        MemoryActivity readActivity = {
-            MemoryActivityType::READ_START, parent, node, now};
-        this->memoryActivities.push_back(readActivity);
+      if (node->getChakraNode()->data_deps().size() != 0) {
+        logger->critical(
+            "Recv node.id={} should have 0 data_deps but check {}",
+            node->id(),
+            node->getChakraNode()->data_deps().size());
+        exit(EXIT_FAILURE);
       }
     }
     if (this->memoryContentSize > this->peakMemoryUsage)
       this->peakMemoryUsage = this->memoryContentSize;
   }
   if (this->trackMemoryActivities) {
-    MemoryActivity writeActivity = {
-        MemoryActivityType::WRITE_END, node, node, now};
-    this->memoryActivities.push_back(writeActivity);
+    // if a tensor has tensor size of 0, then means it dont really have a
+    // output.
+    if (tensorSize > 0) {
+      MemoryActivity writeActivity = {
+          MemoryActivityType::WRITE_END, node, node, now};
+      this->memoryActivities.push_back(writeActivity);
+    }
     for (auto parentId : node->getChakraNode()->data_deps()) {
       auto parent = etFeeder->lookupNode(parentId);
       MemoryActivity readActivity = {
@@ -97,9 +110,12 @@ void LocalMemoryTracker::finishedNode(
   }
 
   releasedNodes.emplace(node);
-  if (node->getChildren().size() == 0 && this->trackMemoryActivities) {
-    MemoryActivity freeActivity = {MemoryActivityType::FREE, node, node, now};
-    this->memoryActivities.push_back(freeActivity);
+  if (node->getChildren().size() == 0) {
+    this->memoryContentSize -= node->tensor_size();
+    if (this->trackMemoryActivities && node->tensor_size() > 0ul) {
+      MemoryActivity freeActivity = {MemoryActivityType::FREE, node, node, now};
+      this->memoryActivities.push_back(freeActivity);
+    }
   }
   for (auto parentId : node->getChakraNode()->data_deps()) {
     auto parent = etFeeder->lookupNode(parentId);
@@ -123,9 +139,11 @@ void LocalMemoryTracker::finishedNode(
       this->memoryContentSize -= parent->tensor_size();
       this->memoryUsageTimeline.insert({now, this->memoryContentSize});
       if (this->trackMemoryActivities) {
-        MemoryActivity freeActivity = {
-            MemoryActivityType::FREE, parent, node, now};
-        this->memoryActivities.push_back(freeActivity);
+        if (parent->tensor_size() > 0ul) {
+          MemoryActivity freeActivity = {
+              MemoryActivityType::FREE, parent, node, now};
+          this->memoryActivities.push_back(freeActivity);
+        }
       }
     }
   }
@@ -147,6 +165,7 @@ void LocalMemoryTracker::report(std::string reportFolder) {
 
   // report memory activities
   if (this->workload->sys->track_mem_activities) {
+    std::filesystem::create_directories("mem_report");
     json j;
     j["traceEvents"] = std::vector<json>();
     for (auto activity : this->memoryActivities) {
