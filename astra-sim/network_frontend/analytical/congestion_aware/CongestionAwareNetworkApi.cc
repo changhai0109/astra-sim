@@ -15,7 +15,7 @@ using namespace NetworkAnalyticalCongestionAware;
 std::shared_ptr<Topology> CongestionAwareNetworkApi::topology;
 
 void CongestionAwareNetworkApi::set_topology(
-    std::shared_ptr<Topology> topology_ptr) noexcept {
+    std::shared_ptr<Topology> topology_ptr) {
   assert(topology_ptr != nullptr);
 
   // move topology
@@ -28,7 +28,7 @@ void CongestionAwareNetworkApi::set_topology(
       CongestionAwareNetworkApi::topology->get_bandwidth_per_dim();
 }
 
-CongestionAwareNetworkApi::CongestionAwareNetworkApi(const int rank) noexcept
+CongestionAwareNetworkApi::CongestionAwareNetworkApi(const int rank)
     : CommonNetworkApi(rank) {
   assert(rank >= 0);
 }

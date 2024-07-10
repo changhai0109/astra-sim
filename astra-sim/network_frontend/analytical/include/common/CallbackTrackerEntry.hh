@@ -22,7 +22,7 @@ class CallbackTrackerEntry {
   /**
    * Constructor.
    */
-  CallbackTrackerEntry() noexcept;
+  CallbackTrackerEntry();
 
   /**
    * Register a callback for sim_send() call.
@@ -30,7 +30,7 @@ class CallbackTrackerEntry {
    * @param callback callback function pointer
    * @param arg argument of the callback function
    */
-  void register_send_callback(Callback callback, CallbackArg arg) noexcept;
+  void register_send_callback(Callback callback, CallbackArg arg);
 
   /**
    * Register a callback for sim_recv() call.
@@ -38,7 +38,7 @@ class CallbackTrackerEntry {
    * @param callback callback function pointer
    * @param arg argument of the callback function
    */
-  void register_recv_callback(Callback callback, CallbackArg arg) noexcept;
+  void register_recv_callback(Callback callback, CallbackArg arg);
 
   /**
    * Check if the transmission of the chunk is finished.
@@ -46,12 +46,12 @@ class CallbackTrackerEntry {
    * @return true if the transmission of the chunk is alread finished,
    *         false otherwise
    */
-  [[nodiscard]] bool is_transmission_finished() const noexcept;
+  [[nodiscard]] bool is_transmission_finished() const;
 
   /**
    * Mark the transmission of the chunk as finished.
    */
-  void set_transmission_finished() noexcept;
+  void set_transmission_finished();
 
   /**
    * Check the existence of both sim_send() and sim_recv() callbacks.
@@ -59,17 +59,17 @@ class CallbackTrackerEntry {
    * @return true if both sim_send() and sim_recv() callbacks are registered,
    *         false otherwise
    */
-  [[nodiscard]] bool both_callbacks_registered() const noexcept;
+  [[nodiscard]] bool both_callbacks_registered() const;
 
   /**
    * Invoke the sim_send() callback.
    */
-  void invoke_send_handler() noexcept;
+  void invoke_send_handler();
 
   /**
    * Invoke the sim_recv() callback.
    */
-  void invoke_recv_handler() noexcept;
+  void invoke_recv_handler();
 
  private:
   /// sim_send() callback event

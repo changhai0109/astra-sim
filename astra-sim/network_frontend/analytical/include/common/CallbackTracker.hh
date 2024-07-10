@@ -19,7 +19,7 @@ class CallbackTracker {
  public:
   /// Key = (tag, src, dest, chunk_size, chunk_id)
   using Key = std::tuple<int, int, int, ChunkSize, int>;
-  CallbackTracker() noexcept;
+  CallbackTracker();
 
   /**
    * Search for the entry identified by (tag, src, dest, chunk_size, chunk_id)
@@ -37,7 +37,7 @@ class CallbackTracker {
       int src,
       int dest,
       ChunkSize chunk_size,
-      int chunk_id) noexcept;
+      int chunk_id);
 
   /**
    * Create a new entry identified by (tag, src, dest, chunk_size, chunk_id)
@@ -55,7 +55,7 @@ class CallbackTracker {
       int src,
       int dest,
       ChunkSize chunk_size,
-      int chunk_id) noexcept;
+      int chunk_id);
 
   /**
    * Remove the entry identified by (tag, src, dest, chunk_size, chunk_id)
@@ -72,7 +72,7 @@ class CallbackTracker {
       int src,
       int dest,
       ChunkSize chunk_size,
-      int chunk_id) noexcept;
+      int chunk_id);
 
  private:
   /// map from (tag, src, dest, chunk_size, chunk_id) tuple to

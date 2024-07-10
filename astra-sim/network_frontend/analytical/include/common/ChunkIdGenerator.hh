@@ -26,7 +26,7 @@ class ChunkIdGenerator {
   /**
    * Constructor.
    */
-  ChunkIdGenerator() noexcept;
+  ChunkIdGenerator();
 
   /**
    * Create unique chunk id for sim_send() call.
@@ -41,7 +41,7 @@ class ChunkIdGenerator {
       int tag,
       int src,
       int dest,
-      ChunkSize chunk_size) noexcept;
+      ChunkSize chunk_size);
 
   /**
    * Create unique chunk id for sim_recv call.
@@ -56,7 +56,7 @@ class ChunkIdGenerator {
       int tag,
       int src,
       int dest,
-      ChunkSize chunk_size) noexcept;
+      ChunkSize chunk_size);
 
  private:
   /// map from (tag, src, dest, chunk_size) tuple to ChunkIdGeneratorEntry

@@ -7,7 +7,7 @@ LICENSE file in the root directory of this source tree.
 
 using namespace AstraSimAnalytical;
 
-CmdLineParser::CmdLineParser(const char* const argv0) noexcept
+CmdLineParser::CmdLineParser(const char* const argv0)
     : options(argv0, "ASTRA-sim") {
   parsed = {};
 
@@ -15,7 +15,7 @@ CmdLineParser::CmdLineParser(const char* const argv0) noexcept
   define_options();
 }
 
-void CmdLineParser::define_options() noexcept {
+void CmdLineParser::define_options() {
   options.set_width(70).allow_unrecognised_options().add_options()(
       "workload-configuration",
       "Workload configuration file",
@@ -52,7 +52,7 @@ void CmdLineParser::define_options() noexcept {
       cxxopts::value<bool>()->default_value("false"));
 }
 
-void CmdLineParser::parse(int argc, char* argv[]) noexcept {
+void CmdLineParser::parse(int argc, char* argv[]) {
   try {
     // try parsing command line options
     parsed = options.parse(argc, argv);

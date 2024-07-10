@@ -22,7 +22,7 @@ class CmdLineParser {
    *
    * @param argv0 argv[0] from main function
    */
-  explicit CmdLineParser(const char* argv0) noexcept;
+  explicit CmdLineParser(const char* argv0);
 
   /**
    * Parse the command line arguments.
@@ -30,7 +30,7 @@ class CmdLineParser {
    * @param argc argc from main function
    * @param argv argv from main function
    */
-  void parse(int argc, char* argv[]) noexcept;
+  void parse(int argc, char* argv[]);
 
   /**
    * Get the value of the option in type T with the given name.
@@ -40,7 +40,7 @@ class CmdLineParser {
    * @return read argument value in type T
    */
   template <typename T>
-  T get(const std::string& name) const noexcept {
+  T get(const std::string& name) const {
     try {
       // try retrieving options
       return parsed[name].as<T>();
@@ -62,7 +62,7 @@ class CmdLineParser {
   /**
    * Define the options for cxxopts.
    */
-  void define_options() noexcept;
+  void define_options();
 };
 
 } // namespace AstraSimAnalytical

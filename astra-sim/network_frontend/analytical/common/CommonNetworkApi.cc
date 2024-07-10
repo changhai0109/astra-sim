@@ -21,17 +21,17 @@ int CommonNetworkApi::dims_count = -1;
 std::vector<Bandwidth> CommonNetworkApi::bandwidth_per_dim = {};
 
 void CommonNetworkApi::set_event_queue(
-    std::shared_ptr<EventQueue> event_queue_ptr) noexcept {
+    std::shared_ptr<EventQueue> event_queue_ptr) {
   assert(event_queue_ptr != nullptr);
 
   CommonNetworkApi::event_queue = std::move(event_queue_ptr);
 }
 
-CallbackTracker& CommonNetworkApi::get_callback_tracker() noexcept {
+CallbackTracker& CommonNetworkApi::get_callback_tracker() {
   return callback_tracker;
 }
 
-void CommonNetworkApi::process_chunk_arrival(void* args) noexcept {
+void CommonNetworkApi::process_chunk_arrival(void* args) {
   assert(args != nullptr);
 
   // parse chunk data
@@ -62,8 +62,7 @@ void CommonNetworkApi::process_chunk_arrival(void* args) noexcept {
   }
 }
 
-CommonNetworkApi::CommonNetworkApi(const int rank) noexcept
-    : AstraNetworkAPI(rank) {
+CommonNetworkApi::CommonNetworkApi(const int rank) : AstraNetworkAPI(rank) {
   assert(rank >= 0);
 }
 

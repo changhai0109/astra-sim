@@ -8,7 +8,7 @@ LICENSE file in the root directory of this source tree.
 
 using namespace AstraSimAnalytical;
 
-ChunkIdGenerator::ChunkIdGenerator() noexcept {
+ChunkIdGenerator::ChunkIdGenerator() {
   chunk_id_map = {};
 }
 
@@ -16,7 +16,7 @@ int ChunkIdGenerator::create_send_chunk_id(
     const int tag,
     const int src,
     const int dest,
-    const ChunkSize chunk_size) noexcept {
+    const ChunkSize chunk_size) {
   assert(tag >= 0);
   assert(src >= 0);
   assert(dest >= 0);
@@ -42,7 +42,7 @@ int ChunkIdGenerator::create_recv_chunk_id(
     const int tag,
     const int src,
     const int dest,
-    const ChunkSize chunk_size) noexcept {
+    const ChunkSize chunk_size) {
   assert(tag >= 0);
   assert(src >= 0);
   assert(dest >= 0);

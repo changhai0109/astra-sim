@@ -28,14 +28,14 @@ class CongestionUnawareNetworkApi final : public CommonNetworkApi {
    *
    * @param topology_ptr pointer to the to
    */
-  static void set_topology(std::shared_ptr<Topology> topology_ptr) noexcept;
+  static void set_topology(std::shared_ptr<Topology> topology_ptr);
 
   /**
    * Constructor.
    *
    * @param rank id of the API
    */
-  explicit CongestionUnawareNetworkApi(int rank) noexcept;
+  explicit CongestionUnawareNetworkApi(int rank);
 
   /**
    * Implement sim_send of AstraNetworkAPI.

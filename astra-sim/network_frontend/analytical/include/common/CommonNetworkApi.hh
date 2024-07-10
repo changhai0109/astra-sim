@@ -30,29 +30,28 @@ class CommonNetworkApi : public AstraNetworkAPI {
    *
    * @param event_queue_ptr pointer to the event queue
    */
-  static void set_event_queue(
-      std::shared_ptr<EventQueue> event_queue_ptr) noexcept;
+  static void set_event_queue(std::shared_ptr<EventQueue> event_queue_ptr);
 
   /**
    * Get the reference to the callback tracker.
    *
    * @return reference to the callback tracker
    */
-  static CallbackTracker& get_callback_tracker() noexcept;
+  static CallbackTracker& get_callback_tracker();
 
   /**
    * Callback to be invoked when a chunk arrives its destination.
    *
    * @param args arguments of the callback function
    */
-  static void process_chunk_arrival(void* args) noexcept;
+  static void process_chunk_arrival(void* args);
 
   /**
    * Constructor.
    *
    * @param rank id of the API
    */
-  explicit CommonNetworkApi(int rank) noexcept;
+  explicit CommonNetworkApi(int rank);
 
   /**
    * Implement sim_get_time of AstraNetworkAPI.

@@ -8,7 +8,7 @@ LICENSE file in the root directory of this source tree.
 
 using namespace AstraSimAnalytical;
 
-CallbackTracker::CallbackTracker() noexcept {
+CallbackTracker::CallbackTracker() {
   // initialize tracker
   tracker = {};
 }
@@ -18,7 +18,7 @@ std::optional<CallbackTrackerEntry*> CallbackTracker::search_entry(
     const int src,
     const int dest,
     const ChunkSize chunk_size,
-    const int chunk_id) noexcept {
+    const int chunk_id) {
   assert(tag >= 0);
   assert(src >= 0);
   assert(dest >= 0);
@@ -43,7 +43,7 @@ CallbackTrackerEntry* CallbackTracker::create_new_entry(
     const int src,
     const int dest,
     const ChunkSize chunk_size,
-    const int chunk_id) noexcept {
+    const int chunk_id) {
   assert(tag >= 0);
   assert(src >= 0);
   assert(dest >= 0);
@@ -65,7 +65,7 @@ void CallbackTracker::pop_entry(
     const int src,
     const int dest,
     const ChunkSize chunk_size,
-    const int chunk_id) noexcept {
+    const int chunk_id) {
   assert(tag >= 0);
   assert(src >= 0);
   assert(dest >= 0);

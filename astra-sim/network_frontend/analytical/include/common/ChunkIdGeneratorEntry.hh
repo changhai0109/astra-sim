@@ -17,31 +17,31 @@ class ChunkIdGeneratorEntry {
   /**
    * Constructur.
    */
-  ChunkIdGeneratorEntry() noexcept;
+  ChunkIdGeneratorEntry();
 
   /**
    * Get the chunk id for sim_send() call.
    *
    * @return chunk id for sim_send() call
    */
-  [[nodiscard]] int get_send_id() const noexcept;
+  [[nodiscard]] int get_send_id() const;
 
   /**
    * Get the chunk id for sim_recv() call.
    *
    * @return chunk id for sim_recv() call
    */
-  [[nodiscard]] int get_recv_id() const noexcept;
+  [[nodiscard]] int get_recv_id() const;
 
   /**
    * Increment the chunk id for sim_send() call.
    */
-  void increment_send_id() noexcept;
+  void increment_send_id();
 
   /**
    * Increment the chunk id for sim_recv() call.
    */
-  void increment_recv_id() noexcept;
+  void increment_recv_id();
 
  private:
   /// current available chunk id for sim_send() call
