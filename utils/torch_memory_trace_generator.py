@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import pickle, json, argparse
 
 
@@ -12,7 +13,7 @@ class TorchMemoryTraceGenerator:
         self._name_map_address_size = dict()
         self._address_counter = 0
 
-    def alloc_tensor(self, name, size, time_us):
+    def alloc_tensor(self, name, caller, size, time_us):
         time_us += 1719260553557947
         device_id = 0
         address = self._address_counter
@@ -20,16 +21,16 @@ class TorchMemoryTraceGenerator:
         if size != 0:
             # self.trace["segments"].append(self.__class__.segments_template(name, device_id, size, address))
             # self.trace["device_traces"][device_id].append(self.__class__.device_traces_seg_alloc_template(name, size, address, time_us))
-            self.trace["device_traces"][device_id].append(self.__class__.device_traces_alloc_template(name, size, address, time_us+10))
+            self.trace["device_traces"][device_id].append(self.__class__.device_traces_alloc_template(name, caller, size, address, time_us+10))
         assert not name in self._name_map_address_size
         self._name_map_address_size[name] = address, size
 
-    def dealloc_tensor(self, name, time_us):
+    def dealloc_tensor(self, name, caller, time_us):
         time_us += 1719260553557947
         device_id = 0
         address, size = self._name_map_address_size[name]
-        self.trace["device_traces"][device_id].append(self.__class__.device_traces_free_request_template(name, size, address, time_us))
-        self.trace["device_traces"][device_id].append(self.__class__.device_traces_free_complete_template(name, size, address, time_us+10))
+        self.trace["device_traces"][device_id].append(self.__class__.device_traces_free_request_template(name, caller, size, address, time_us))
+        self.trace["device_traces"][device_id].append(self.__class__.device_traces_free_complete_template(name, caller, size, address, time_us+10))
         # self.trace["device_traces"][device_id].append(self.__class__.device_traces_seg_free_template(name, size, address, time_us+15))
         del self._name_map_address_size[name]
 
@@ -45,7 +46,7 @@ class TorchMemoryTraceGenerator:
             raise NotImplementedError()
 
     @classmethod
-    def segments_template(cls, name, device_id, size, address):
+    def segments_template(cls, name, caller, device_id, size, address):
         ret = {
             "device": device_id,
             "address": address,
@@ -69,7 +70,12 @@ class TorchMemoryTraceGenerator:
                             "name": name,
                             "filename": "??",
                             "line": 0
-                        }
+                        },
+                {
+                    "name": caller,
+                    "filename": "??",
+                    "line": 0
+                }
                     ]
                 }
             ]
@@ -77,7 +83,7 @@ class TorchMemoryTraceGenerator:
         return ret
 
     @classmethod
-    def device_traces_seg_alloc_template(cls, name, size, address, time_us):
+    def device_traces_seg_alloc_template(cls, name, caller, size, address, time_us):
         ret = {
             "action": "segment_alloc",
             "addr": address,
@@ -89,13 +95,18 @@ class TorchMemoryTraceGenerator:
                     "name": name,
                     "filename": "??",
                     "line": 0
+                },
+                {
+                    "name": caller,
+                    "filename": "??",
+                    "line": 0
                 }
             ],
         }
         return ret
 
     @classmethod
-    def device_traces_alloc_template(cls, name, size, address, time_us):
+    def device_traces_alloc_template(cls, name, caller, size, address, time_us):
         ret = {
             "action": "alloc",
             "addr": address,
@@ -107,13 +118,18 @@ class TorchMemoryTraceGenerator:
                     "name": name,
                     "filename": "??",
                     "line": 0
+                },
+                {
+                    "name": caller,
+                    "filename": "??",
+                    "line": 0
                 }
             ],
         }
         return ret
 
     @classmethod
-    def device_traces_free_request_template(cls, name, size, address, time_us):
+    def device_traces_free_request_template(cls, name, caller, size, address, time_us):
         ret = {
             "action": "free_requested",
             "addr": address,
@@ -125,13 +141,18 @@ class TorchMemoryTraceGenerator:
                     "name": name,
                     "filename": "??",
                     "line": 0
+                },
+                {
+                    "name": caller,
+                    "filename": "??",
+                    "line": 0
                 }
             ],
         }
         return ret
 
     @classmethod
-    def device_traces_free_complete_template(cls, name, size, address, time_us):
+    def device_traces_free_complete_template(cls, name, caller, size, address, time_us):
         ret = {
             "action": "free_completed",
             "addr": address,
@@ -143,13 +164,18 @@ class TorchMemoryTraceGenerator:
                     "name": name,
                     "filename": "??",
                     "line": 0
+                },
+                {
+                    "name": caller,
+                    "filename": "??",
+                    "line": 0
                 }
             ],
         }
         return ret
 
     @classmethod
-    def device_traces_seg_free_template(cls, name, size, address, time_us):
+    def device_traces_seg_free_template(cls, name, caller, size, address, time_us):
         ret = {
             "action": "segment_free",
             "addr": address,
@@ -159,6 +185,11 @@ class TorchMemoryTraceGenerator:
             "frames": [
                 {
                     "name": name,
+                    "filename": "??",
+                    "line": 0
+                },
+                {
+                    "name": caller,
                     "filename": "??",
                     "line": 0
                 }
@@ -210,11 +241,12 @@ def transform_chrome_trace_to_torch_memory_trace(chrome_trace_path, torch_memory
             continue
         name = event["name"]
         size = event["args"]["size"]
+        caller = event["args"]["caller"]
         time_us = event["ts"]
         if event["ph"] == "B":
-            torch_trace.alloc_tensor(name, size, time_us)
+            torch_trace.alloc_tensor(name, caller, size, time_us)
         elif event["ph"] == "E":
-            torch_trace.dealloc_tensor(name, time_us)
+            torch_trace.dealloc_tensor(name, caller, time_us)
         else:
             assert False
     torch_trace.dump(torch_memory_trace)
