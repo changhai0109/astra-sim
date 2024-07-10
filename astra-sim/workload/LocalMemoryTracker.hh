@@ -55,6 +55,7 @@ class LocalMemoryTracker {
   std::vector<MemoryActivity> memoryActivities;
   std::map<Tick, size_t> memoryUsageTimeline;
   std::unordered_set<std::shared_ptr<Chakra::ETFeederNode>> releasedNodes;
+  static std::unordered_map<uint32_t, Tick> communicationSendTick;
 };
 
 } // namespace AstraSim
