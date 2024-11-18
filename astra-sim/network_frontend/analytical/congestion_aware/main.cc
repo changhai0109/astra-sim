@@ -103,6 +103,12 @@ int main(int argc, char* argv[]) {
     event_queue->proceed();
   }
 
+  // print network cost
+  const auto topology_cost = topology->get_topology_cost();
+  AstraSim::Logger::getLogger(
+      "network_frontend::analytical::congestion_aware::main")
+      ->info(fmt::format("Network Cost: {}", topology_cost));
+
   for (int i = 0; i < npus_count; i++) {
     delete systems[i];
   }
