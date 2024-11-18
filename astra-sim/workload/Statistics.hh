@@ -92,6 +92,11 @@ class Statistics {
   Tick _calculateTotalRuntimeFromIntervals(
       const std::vector<std::pair<Tick, Tick>>& intervals) const;
   void extract_utilizations();
+  template <typename T>
+  void report_metrics(
+      std::shared_ptr<spdlog::logger> logger,
+      const std::string& name,
+      const T& value) const;
 
   std::unordered_map<OperatorStatistics::OperatorType, Tick> type_time;
   Tick wall_time;
