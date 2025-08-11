@@ -47,7 +47,7 @@ Workload::Workload(Sys* sys, string et_filename, string comm_group_filename) {
     // TODO: parametrize the number of available hardware resources
     this->hw_resource = new HardwareResource(1, sys->id);
     this->local_mem_usage_tracker =
-        std::make_unique<LocalMemUsageTracker>(sys->id);
+        std::make_unique<LocalMemUsageTracker>(sys->id, this->et_feeder);
     this->sys = sys;
     initialize_comm_group(comm_group_filename);
     this->stats = new Statistics(this);
